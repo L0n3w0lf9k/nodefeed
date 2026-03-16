@@ -126,7 +126,7 @@ Return ONLY the JSON object, no markdown fences, no preamble.`
 
 // Run directly: node src/generator.js
 if (require.main === module) {
-  generateArticle().then(result => {
+  db.init().then(() => generateArticle()).then(result => {
     console.log('Result:', result);
     process.exit(0);
   });

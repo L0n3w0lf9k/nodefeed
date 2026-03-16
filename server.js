@@ -301,15 +301,23 @@ cron.schedule('0 */6 * * *', async () => {
 });
 
 // ─── STARTUP ─────────────────────────────────────────────────────────────────
-app.listen(PORT, async () => {
-  console.log(`[NodeFeed] Running on port ${PORT}`);
+async function start() {
+  await db.init();
+  console.log('[NodeFeed] Database ready.');
 
-  // Generate first article immediately if DB is empty
-  const count = db.getCount();
-  if (count === 0) {
-    console.log('[NodeFeed] No articles found — generating first article now...');
-    await generateArticle();
-  } else {
-    console.log(`[NodeFeed] ${count} articles in database.`);
-  }
+  app.listen(PORT, async () => {
+    console.log(`[NodeFeed] Running on port ${PORT}`);
+    const count = db.getCount();
+    if (count === 0) {
+      console.log('[NodeFeed] No articles found — generating first article now...');
+      await generateArticle();
+    } else {
+      console.log(`[NodeFeed] ${count} articles in database.`);
+    }
+  });
+}
+
+start().catch(err => {
+  console.error('[NodeFeed] Failed to start:', err);
+  process.exit(1);
 });
