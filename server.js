@@ -115,7 +115,8 @@ function layout(title, body, meta = {}) {
 <meta name="twitter:card" content="summary_large_image"/>
 <meta name="twitter:site" content="@nodefeeds"/>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
-  <link rel="alternate" type="application/rss+xml" title="${SITE_NAME}" href="/feed.xml"/>
+<meta name="google-site-verification" content="R3mHQsUmZPkUzQd1W9IdzfwhB9ztK4D9AR9XxeI2WRA"/>
+<link rel="alternate" type="application/rss+xml" title="${SITE_NAME}" href="/feed.xml"/>
 <link rel="sitemap" type="application/xml" href="/sitemap.xml"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
