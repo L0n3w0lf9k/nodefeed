@@ -16,6 +16,13 @@ const ADSENSE_ID = process.env.ADSENSE_PUBLISHER_ID || '';
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
 
+// Serve images from Railway Volume
+const VOLUME_PATH = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, 'data');
+const IMAGES_DIR = path.join(VOLUME_PATH, 'images');
+const fs = require('fs');
+if (!fs.existsSync(IMAGES_DIR)) fs.mkdirSync(IMAGES_DIR, { recursive: true });
+app.use('/images', express.static(IMAGES_DIR));
+
 // ── HELPERS ──────────────────────────────────────────────────────────────────
 
 function formatDate(d) {
@@ -31,7 +38,8 @@ function timeAgo(d) {
 
 function adsenseHead() {
   if (!ADSENSE_ID) return '';
-  return `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_ID}" crossorigin="anonymous"></script>`;
+  // crossorigin + onerror prevents ad blocker console errors from breaking the page
+  return `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_ID}" crossorigin="anonymous" onerror="console.warn('AdSense blocked by client')"></script>`;
 }
 
 function adUnit() {
@@ -51,7 +59,7 @@ function catColor(cat) {
 
 function thumbHtml(article, cls = 'card-thumb') {
   if (article.image_url) {
-    return `<div class="${cls}"><img src="${article.image_url}" alt="${article.image_alt || article.title}" loading="lazy"/></div>`;
+    return `<div class="${cls}"><img src="${article.image_url}" alt="${article.image_alt || article.title}" loading="lazy" onerror="this.style.display='none';this.parentElement.classList.add('thumb-placeholder')"/></div>`;
   }
   return `<div class="${cls}"><div class="thumb-placeholder"></div></div>`;
 }
@@ -115,7 +123,7 @@ function layout(title, body, meta = {}) {
 <meta name="twitter:card" content="summary_large_image"/>
 <meta name="twitter:site" content="@nodefeeds"/>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
-<meta name="google-site-verification" content="R3mHQsUmZPkUzQd1W9IdzfwhB9ztK4D9AR9XxeI2WRA"/>
+<meta name="google-site-verification" content="R3mHQsUmZPkUzQd1W9IdzfwhB9ztK4D9AR9XxeI2WRA" />
 <link rel="alternate" type="application/rss+xml" title="${SITE_NAME}" href="/feed.xml"/>
 <link rel="sitemap" type="application/xml" href="/sitemap.xml"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -272,7 +280,7 @@ app.get('/article/:slug', (req, res) => {
 
   const imgHtml = article.image_url ? `
     <div class="article-hero-img">
-      <img src="${article.image_url}" alt="${article.image_alt||article.title}"/>
+      <img src="${article.image_url}" alt="${article.image_alt||article.title}" onerror="this.style.display='none'"/>
       ${article.image_credit ? `<span class="img-credit">${article.image_credit_url
         ? `<a href="${article.image_credit_url}" target="_blank">${article.image_credit}</a>`
         : article.image_credit}</span>` : ''}

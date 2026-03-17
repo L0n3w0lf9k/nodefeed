@@ -7,3 +7,7 @@ healthcheckPath = "/"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
+
+# Volume must be created manually in Railway dashboard
+# Settings: Mount Path = /data
+# This persists the database AND generated article images across deploys

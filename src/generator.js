@@ -2,7 +2,7 @@ require('dotenv').config();
 const Anthropic = require('@anthropic-ai/sdk');
 const slugify = require('slugify');
 const db = require('./db');
-const { getArticleImage } = require('./images');
+const { generateAndSaveImage } = require('./images');
 const { postArticle } = require('./twitter');
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -194,13 +194,13 @@ Return ONLY a JSON object with exactly these fields (no markdown fences, no prea
       return { success: false, reason: 'too_similar_after_generation' };
     }
 
-    // Fetch image
-    console.log(`[NodeFeeds] Fetching image...`);
-    const image = await getArticleImage(article.title, article.category, article.excerpt);
-
-    // Build slug
+    // Build slug first so we can use it as image filename
     const baseSlug = slugify(article.title, { lower: true, strict: true }).slice(0, 60);
     const slug = `${baseSlug}-${Date.now().toString().slice(-6)}`;
+
+    // Generate and save image to Volume
+    console.log(`[NodeFeeds] Generating image...`);
+    const image = await generateAndSaveImage(slug, article.title, article.category);
 
     const saved = db.insertArticle({
       slug,

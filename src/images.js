@@ -1,85 +1,76 @@
 require('dotenv').config();
 const fetch = require('node-fetch');
+const fs = require('fs');
+const path = require('path');
 
-const UNSPLASH_KEY = process.env.UNSPLASH_ACCESS_KEY;
+// Images stored in the Railway Volume alongside the database
+const VOLUME_PATH = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, '..', 'data');
+const IMAGES_DIR = path.join(VOLUME_PATH, 'images');
 
-const CONCRETE_KEYWORDS = [
-  'iphone','samsung','galaxy','pixel','macbook','ipad','apple watch',
-  'nvidia','gpu','processor','chip','rtx','tesla','vision pro',
-  'chatgpt','gemini','copilot','midjourney','dall-e','stable diffusion',
-  'robot','drone','headset','keyboard','monitor','laptop','tablet',
-  'notion','figma','slack','zoom','cursor','github','vscode',
-  'openai','anthropic','google','microsoft','meta','amazon','apple',
-  'spacex','starship','nasa','rocket','satellite','telescope',
-  'bitcoin','ethereum','coinbase','binance','solana'
-];
-
-function isConcrete(title, category) {
-  const text = (title + ' ' + category).toLowerCase();
-  return CONCRETE_KEYWORDS.some(kw => text.includes(kw));
+if (!fs.existsSync(IMAGES_DIR)) {
+  fs.mkdirSync(IMAGES_DIR, { recursive: true });
 }
 
-async function fetchUnsplashImage(query) {
-  if (!UNSPLASH_KEY) {
-    console.log('[Images] No Unsplash key — skipping');
-    return null;
-  }
-  try {
-    const url = `https://api.unsplash.com/photos/random?query=${encodeURIComponent(query)}&orientation=landscape&client_id=${UNSPLASH_KEY}`;
-    const res = await fetch(url, { timeout: 8000 });
-    if (!res.ok) {
-      console.log('[Images] Unsplash returned:', res.status);
-      return null;
-    }
-    const data = await res.json();
-    return {
-      url: data.urls.regular,
-      thumb: data.urls.small,
-      alt: data.alt_description || query,
-      credit: `Photo by ${data.user.name} on Unsplash`,
-      creditUrl: data.links.html
-    };
-  } catch (e) {
-    console.error('[Images] Unsplash error:', e.message);
-    return null;
-  }
-}
-
-// Pollinations.ai — free, no key, returns image directly at URL
-// We just build the URL — no need to fetch it, browser loads it directly
-function buildPollinationsUrl(prompt, width = 1200, height = 630) {
-  const enhanced = `${prompt}, tech magazine editorial, cinematic lighting, professional photography style, high quality, detailed`;
-  const encoded = encodeURIComponent(enhanced);
-  // Use a seed based on the prompt for consistency
-  const seed = Math.abs(prompt.split('').reduce((a, c) => a + c.charCodeAt(0), 0));
-  return `https://image.pollinations.ai/prompt/${encoded}?width=${width}&height=${height}&seed=${seed}&nologo=true&model=flux`;
-}
-
-async function getArticleImage(title, category, excerpt) {
-  const concrete = isConcrete(title, category);
-
-  if (concrete && UNSPLASH_KEY) {
-    console.log(`[Images] Concrete topic — trying Unsplash: "${title}"`);
-    const query = title.split(' ').slice(0, 5).join(' ');
-    const img = await fetchUnsplashImage(query);
-    if (img) return { ...img, source: 'unsplash' };
-    console.log('[Images] Unsplash failed — falling back to Pollinations');
-  }
-
-  // Pollinations — just return the URL directly, no fetch needed
-  console.log(`[Images] Using Pollinations AI for: "${title}"`);
-  const prompt = `${title} ${category}`;
-  const url = buildPollinationsUrl(prompt);
-  const thumb = buildPollinationsUrl(prompt, 600, 315);
-
-  return {
-    url,
-    thumb,
-    alt: title,
-    credit: 'AI-generated image via Pollinations',
-    creditUrl: 'https://pollinations.ai',
-    source: 'pollinations'
+// Build a Pollinations prompt tailored to the article
+function buildImagePrompt(title, category) {
+  const styleByCategory = {
+    'AI Tools':        'glowing neural network interface, dark tech aesthetic, blue green light rays',
+    'Productivity':    'clean minimal workspace, soft light, modern office, top down view',
+    'Gadgets':         'product photography, dark background, dramatic lighting, tech device',
+    'Automation':      'robotic gears and circuits, futuristic factory, neon blue lights',
+    'AI News':         'abstract artificial intelligence, digital brain, dark background, glowing nodes',
+    'Future of Work':  'futuristic office, holographic displays, people working with AI',
+    'Developer Tools': 'code on dark screen, terminal, matrix style, green text',
+    'Tech Reviews':    'clean product shot, dramatic lighting, dark background',
+    'Space Tech':      'dramatic space photography, stars nebula planets, NASA style',
+    'Cybersecurity':   'dark hacker aesthetic, binary code, red warning lights, shield',
+    'Crypto & Web3':   'blockchain nodes, gold bitcoin, dark background, digital finance',
   };
+
+  const style = styleByCategory[category] || 'technology abstract, dark background, cinematic';
+  return `${title}, ${style}, editorial magazine photography, ultra realistic, 4k, professional`;
 }
 
-module.exports = { getArticleImage };
+// Download image from Pollinations and save to Volume
+async function generateAndSaveImage(slug, title, category) {
+  const prompt = buildImagePrompt(title, category);
+  const seed = Math.abs(slug.split('').reduce((a, c) => a + c.charCodeAt(0), 0));
+  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1200&height=630&seed=${seed}&nologo=true&model=flux`;
+
+  console.log(`[Images] Generating AI image for: "${title}"`);
+
+  try {
+    // Pollinations can be slow — give it 30 seconds
+    const res = await fetch(pollinationsUrl, { timeout: 30000 });
+
+    if (!res.ok) {
+      throw new Error(`Pollinations returned ${res.status}`);
+    }
+
+    const contentType = res.headers.get('content-type') || 'image/jpeg';
+    const ext = contentType.includes('png') ? 'png' : 'jpg';
+    const filename = `${slug}.${ext}`;
+    const filepath = path.join(IMAGES_DIR, filename);
+
+    // Save image buffer to disk
+    const buffer = await res.buffer();
+    fs.writeFileSync(filepath, buffer);
+
+    console.log(`[Images] ✓ Saved image: ${filename} (${Math.round(buffer.length / 1024)}kb)`);
+
+    return {
+      url: `/images/${filename}`,
+      thumb: `/images/${filename}`,
+      alt: title,
+      credit: 'AI-generated image via Pollinations',
+      creditUrl: 'https://pollinations.ai',
+      source: 'pollinations'
+    };
+
+  } catch (e) {
+    console.error(`[Images] ✗ Failed to generate image:`, e.message);
+    return null;
+  }
+}
+
+module.exports = { generateAndSaveImage };
