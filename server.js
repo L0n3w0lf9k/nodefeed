@@ -677,16 +677,24 @@ cron.schedule('0 */6 * * *', async () => {
 async function start() {
   await db.init();
   console.log('[NodeFeeds] Database ready.');
-  app.listen(PORT, async () => {
-    console.log(`[NodeFeeds] Live on port ${PORT}`);
-    const count = db.getCount();
-    if (count === 0) {
-      console.log('[NodeFeeds] Empty DB — generating first article...');
-      await generateArticle();
-    } else {
-      console.log(`[NodeFeeds] ${count} articles loaded.`);
-      // Repair missing images in background — don't block startup
-      // Also repair articles that have external URLs stored instead of local paths
+
+  // Start server FIRST — Railway health check needs port open immediately
+  await new Promise(resolve => app.listen(PORT, resolve));
+  console.log(`[NodeFeeds] Live on port ${PORT}`);
+
+  // Everything else runs in background — never blocks the server
+  setTimeout(async () => {
+    try {
+      const count = db.getCount();
+      console.log(`[NodeFeeds] ${count} articles in database.`);
+
+      // Generate first article if DB empty
+      if (count === 0) {
+        console.log('[NodeFeeds] Empty DB — generating first article...');
+        await generateArticle();
+      }
+
+      // Repair articles missing images or with external URLs
       const allArts = db.getArticles(200);
       const savedFiles2 = new Set(listSavedImages());
       const missing = allArts.filter(a => {
@@ -695,24 +703,25 @@ async function start() {
         const fn = a.image_url.replace('/images/', '');
         return !savedFiles2.has(fn);
       });
+
       if (missing.length > 0) {
-        console.log(`[NodeFeeds] Found ${missing.length} articles without images — repairing in background...`);
-        (async () => {
-          for (const article of missing) {
-            const image = await generateAndSaveImage(article.slug, article.title, article.category);
-            if (image) {
-              db.updateArticleImage(article.slug, image);
-              console.log(`[NodeFeeds] ✓ Repaired image for: "${article.title}"`);
-            }
-            await new Promise(r => setTimeout(r, 4000));
+        console.log(`[NodeFeeds] Repairing ${missing.length} articles without images...`);
+        for (const article of missing) {
+          const image = await generateAndSaveImage(article.slug, article.title, article.category);
+          if (image) {
+            db.updateArticleImage(article.slug, image);
+            console.log(`[NodeFeeds] ✓ Repaired: "${article.title}"`);
           }
-          console.log('[NodeFeeds] Image repair complete.');
-        })();
+          await new Promise(r => setTimeout(r, 4000));
+        }
+        console.log('[NodeFeeds] Image repair complete.');
       } else {
         console.log('[NodeFeeds] All articles have images ✓');
       }
+    } catch (e) {
+      console.error('[NodeFeeds] Background task error:', e.message);
     }
-  });
+  }, 2000); // 2 second delay after server is up
 }
 
 start().catch(err => {
