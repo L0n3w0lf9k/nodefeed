@@ -163,7 +163,7 @@ module.exports = {
     // Since we don't track per-hour views, we use recently created + high views as proxy
     return queryAll(
       "SELECT * FROM articles WHERE created_at >= datetime('now', ? || ' hours') ORDER BY views DESC LIMIT ?",
-      [\`-\${hours}\`, limit]
+      [`-${hours}`, limit]
     );
   },
 
