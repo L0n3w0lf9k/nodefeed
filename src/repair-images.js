@@ -14,8 +14,11 @@ async function repairImages() {
   console.log(`[Repair] Found ${savedFiles.size} images on disk`);
 
   const missing = articles.filter(a => {
-    // Missing if: no image_url, or image_url set but file doesn't exist on disk
+    // Missing if: no image_url at all
     if (!a.image_url) return true;
+    // Missing if: image_url is an external URL (not a local /images/ path)
+    if (a.image_url.startsWith('http')) return true;
+    // Missing if: local path but file doesn't exist on disk
     const filename = a.image_url.replace('/images/', '');
     return !savedFiles.has(filename);
   });

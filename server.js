@@ -453,12 +453,14 @@ app.get('/admin/images', (req, res) => {
   const articles = db.getArticles(100);
   const savedFiles = new Set(listSavedImages());
   const rows = articles.map(a => {
-    const filename = a.image_url ? a.image_url.replace('/images/', '') : null;
+    const isExternal = a.image_url && a.image_url.startsWith('http');
+    const filename = a.image_url && !isExternal ? a.image_url.replace('/images/', '') : null;
     const onDisk = filename ? savedFiles.has(filename) : false;
+    const status = !a.image_url ? '✗ No image' : isExternal ? '✗ External URL (needs repair)' : onDisk ? '✓ On disk' : '✗ File missing';
     return `<tr style="color:${onDisk ? '#00c882' : '#f55b5b'}">
       <td style="padding:4px 8px">${a.title.slice(0,50)}</td>
-      <td style="padding:4px 8px">${a.image_url || 'NONE'}</td>
-      <td style="padding:4px 8px">${onDisk ? '✓ On disk' : '✗ Missing'}</td>
+      <td style="padding:4px 8px;font-size:10px;word-break:break-all">${(a.image_url||'NONE').slice(0,80)}</td>
+      <td style="padding:4px 8px">${status}</td>
     </tr>`;
   }).join('');
   res.send(`<html><body style="background:#0a0a0f;color:#f0f0f0;font-family:monospace;padding:2rem">
@@ -684,7 +686,15 @@ async function start() {
     } else {
       console.log(`[NodeFeeds] ${count} articles loaded.`);
       // Repair missing images in background — don't block startup
-      const missing = db.getArticlesWithoutImages(50);
+      // Also repair articles that have external URLs stored instead of local paths
+      const allArts = db.getArticles(200);
+      const savedFiles2 = new Set(listSavedImages());
+      const missing = allArts.filter(a => {
+        if (!a.image_url) return true;
+        if (a.image_url.startsWith('http')) return true;
+        const fn = a.image_url.replace('/images/', '');
+        return !savedFiles2.has(fn);
+      });
       if (missing.length > 0) {
         console.log(`[NodeFeeds] Found ${missing.length} articles without images — repairing in background...`);
         (async () => {
