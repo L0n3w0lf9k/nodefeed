@@ -231,6 +231,24 @@ ${adsenseHead()}
       <input type="search" name="q" placeholder="Search articles..." class="search-input" autocomplete="off"/>
       <button type="submit" class="search-btn">⌕</button>
     </form>
+    <div class="header-ticker-wrap">
+      <div class="header-ticker">
+        <div class="header-ticker-inner">
+          ${newsCache.items.slice(0,12).map(item =>
+            `<a href="${item.link}" target="_blank" rel="noopener noreferrer" class="header-ticker-item">
+              <span class="header-ticker-source" style="color:${item.color}">${item.source}</span>
+              <span class="header-ticker-title">${item.title}</span>
+            </a><span class="header-ticker-sep">·</span>`
+          ).join('')}
+          ${newsCache.items.slice(0,12).map(item =>
+            `<a href="${item.link}" target="_blank" rel="noopener noreferrer" class="header-ticker-item">
+              <span class="header-ticker-source" style="color:${item.color}">${item.source}</span>
+              <span class="header-ticker-title">${item.title}</span>
+            </a><span class="header-ticker-sep">·</span>`
+          ).join('')}
+        </div>
+      </div>
+    </div>
     <div class="header-meta">
       <span class="live-badge">● LIVE</span>
       <a href="/feed.xml" class="rss-link">RSS</a>
