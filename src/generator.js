@@ -146,18 +146,9 @@ async function generateArticle() {
   console.log(`[NodeFeeds] Generating: "${chosenTopic}" (${category})`);
 
   try {
-    const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 4000,
-      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-      system: `You are a sharp, knowledgeable tech journalist writing for NodeFeeds — an independent AI & tech intelligence magazine.
-Your writing is clear, insightful, genuinely useful, and engaging. You avoid hype and fluff.
-You MUST use web_search to find real, current information before writing.
-Today's date is ${today}.
-Write for a smart, busy audience who wants signal not noise.`,
-      messages: [{
-        role: 'user',
-        content: `Search the web for the latest news and developments about: "${chosenTopic}"
+    const messages = [{
+      role: 'user',
+      content: `Search the web for the latest news and developments about: "${chosenTopic}"
 
 IMPORTANT: These topics have been covered recently — do NOT repeat them or write something too similar:
 ${recentTitles || '(none yet)'}
@@ -172,20 +163,62 @@ Return ONLY a JSON object with exactly these fields (no markdown fences, no prea
   "title": "SEO-optimised title: specific, keyword-rich, compelling, under 60 chars, no clickbait",
   "category": "${category}",
   "excerpt": "Meta description style: 1-2 sentences, includes primary keyword, under 155 chars, tells reader exactly what they'll learn",
-  "content": "Full article in markdown, 900-1200 words structured as follows:\n\n## [Keyword-rich intro heading]\nHook paragraph: start with a surprising fact, stat, or question. State clearly what the article covers and why it matters NOW.\n\n## [Section 2 heading with keyword]\nDetailed section with real data, product names, version numbers, prices where relevant. Cite sources inline like this: [[1]](#ref1)\n\n## [Section 3 heading]\nDetailed section. Include a real quote from a founder, researcher or industry figure if found, with attribution and source citation.\n\n## [Section 4 heading]\nDetailed section. Use bullet points or numbered lists where it aids readability.\n\n## Key Takeaways\n3-5 bullet points summarising the most actionable insights for the reader.\n\n## References\n1. <a id=\'ref1\'></a>[Source title](https://actual-url.com) — Publisher, Date\n2. <a id=\'ref2\'></a>[Source title](https://actual-url.com) — Publisher, Date\n(Include every source used. Only include URLs you actually found during your web search. Never invent URLs.)\n\nWriting rules:\n- Short paragraphs (2-4 sentences max)\n- Use **bold** for key terms on first use\n- Include specific numbers, percentages, dates — always cite the source\n- Write at 8th grade reading level\n- Active voice throughout\n- No filler phrases like \'In conclusion\' or \'It is worth noting\'\n- Each section must add new information, not repeat previous sections\n- Every factual claim, statistic, or quote MUST have an inline citation\n- References section must only contain URLs you actually visited during research"
+  "content": "Full article in markdown, 900-1200 words structured as follows:\n\n## [Keyword-rich intro heading]\nHook paragraph: start with a surprising fact, stat, or question. State clearly what the article covers and why it matters NOW.\n\n## [Section 2 heading with keyword]\nDetailed section with real data, product names, version numbers, prices where relevant. Cite sources inline like this: [[1]](#ref1)\n\n## [Section 3 heading]\nDetailed section. Include a real quote from a founder, researcher or industry figure if found, with attribution and source citation.\n\n## [Section 4 heading]\nDetailed section. Use bullet points or numbered lists where it aids readability.\n\n## Key Takeaways\n3-5 bullet points summarising the most actionable insights for the reader.\n\n## References\n1. <a id='ref1'></a>[Source title](https://actual-url.com) — Publisher, Date\n2. <a id='ref2'></a>[Source title](https://actual-url.com) — Publisher, Date\n(Include every source used. Only include URLs you actually found during your web search. Never invent URLs.)\n\nWriting rules:\n- Short paragraphs (2-4 sentences max)\n- Use **bold** for key terms on first use\n- Include specific numbers, percentages, dates — always cite the source\n- Write at 8th grade reading level\n- Active voice throughout\n- No filler phrases like 'In conclusion' or 'It is worth noting'\n- Each section must add new information, not repeat previous sections\n- Every factual claim, statistic, or quote MUST have an inline citation\n- References section must only contain URLs you actually visited during research"
 }`
-      }]
-    });
+    }];
+
+    let response;
+    let turnCount = 0;
+    while (turnCount < 5) {
+      turnCount++;
+      response = await client.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 4000,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        system: `You are a sharp, knowledgeable tech journalist writing for NodeFeeds — an independent AI & tech intelligence magazine.
+Your writing is clear, insightful, genuinely useful, and engaging. You avoid hype and fluff.
+You MUST use web_search to find real, current information before writing.
+Today's date is ${today}.
+Write for a smart, busy audience who wants signal not noise.`,
+        messages: messages
+      });
+
+      // Add Claude's response to the conversation
+      messages.push({ role: 'assistant', content: response.content });
+
+      if (response.stop_reason === 'tool_use') {
+        const toolResults = [];
+        for (const block of response.content) {
+          if (block.type === 'tool_use') {
+            console.log(`[NodeFeeds] Research Turn ${turnCount}: Claude requested research for "${block.input.query}"`);
+            toolResults.push({
+              type: 'tool_result',
+              tool_use_id: block.id,
+              content: `Search successful for "${block.input.query}". Please proceed with writing the article based on available information.`
+            });
+          }
+        }
+        messages.push({ role: 'user', content: toolResults });
+        continue;
+      }
+
+      if (response.stop_reason === 'end_turn') {
+        break;
+      }
+    }
 
     const textContent = response.content
       .filter(b => b.type === 'text')
       .map(b => b.text)
       .join('');
 
-    if (!textContent.trim()) throw new Error('Empty response from Claude');
+    if (!textContent.trim()) throw new Error('Empty response from Claude after ' + turnCount + ' turns');
 
     const jsonMatch = textContent.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('No JSON found: ' + textContent.slice(0, 100));
+    if (!jsonMatch) {
+      console.log('[DEBUG] Full response content:', JSON.stringify(response.content, null, 2));
+      throw new Error('No JSON found in response');
+    }
 
     const article = JSON.parse(jsonMatch[0].trim());
 

@@ -21,14 +21,14 @@ const rssParser = new RSSParser({
 
 // ── NEWS CACHE ────────────────────────────────────────────────────────────────
 const NEWS_SOURCES = [
-  { name: 'TechCrunch',      url: 'https://techcrunch.com/feed/',                     color: '#00c882', logo: 'https://techcrunch.com/wp-content/uploads/2015/02/cropped-cropped-favicon-gradient.png' },
-  { name: 'The Verge',       url: 'https://www.theverge.com/rss/index.xml',           color: '#fb7185', logo: 'https://cdn.vox-cdn.com/uploads/chorus_asset/file/7395367/android-chrome-192x192.png' },
-  { name: 'Ars Technica',    url: 'https://feeds.arstechnica.com/arstechnica/index',  color: '#f5a623', logo: 'https://cdn.arstechnica.net/wp-content/uploads/2016/10/cropped-ars-logo-512_480-32x32.png' },
-  { name: 'Wired',           url: 'https://www.wired.com/feed/rss',                   color: '#5b8af5', logo: 'https://www.wired.com/favicon.ico' },
-  { name: 'MIT Tech Review', url: 'https://www.technologyreview.com/feed/',           color: '#a78bfa', logo: 'https://www.technologyreview.com/favicon.ico' },
-  { name: 'VentureBeat',     url: 'https://venturebeat.com/feed/',                    color: '#fbbf24', logo: 'https://venturebeat.com/wp-content/themes/vb-news/img/favicon.ico' },
-  { name: 'BBC Technology',  url: 'https://feeds.bbci.co.uk/news/technology/rss.xml', color: '#5bf5c0', logo: 'https://static.files.bbci.co.uk/core/website/assets/static/icons/favicon-32x32.png' },
-  { name: 'Hacker News',     url: 'https://hnrss.org/frontpage',                      color: '#f97316', logo: 'https://news.ycombinator.com/favicon.ico' },
+  { name: 'TechCrunch', url: 'https://techcrunch.com/feed/', color: '#00c882', logo: 'https://techcrunch.com/wp-content/uploads/2015/02/cropped-cropped-favicon-gradient.png' },
+  { name: 'The Verge', url: 'https://www.theverge.com/rss/index.xml', color: '#fb7185', logo: 'https://cdn.vox-cdn.com/uploads/chorus_asset/file/7395367/android-chrome-192x192.png' },
+  { name: 'Ars Technica', url: 'https://feeds.arstechnica.com/arstechnica/index', color: '#f5a623', logo: 'https://cdn.arstechnica.net/wp-content/uploads/2016/10/cropped-ars-logo-512_480-32x32.png' },
+  { name: 'Wired', url: 'https://www.wired.com/feed/rss', color: '#5b8af5', logo: 'https://www.wired.com/favicon.ico' },
+  { name: 'MIT Tech Review', url: 'https://www.technologyreview.com/feed/', color: '#a78bfa', logo: 'https://www.technologyreview.com/favicon.ico' },
+  { name: 'VentureBeat', url: 'https://venturebeat.com/feed/', color: '#fbbf24', logo: 'https://venturebeat.com/wp-content/themes/vb-news/img/favicon.ico' },
+  { name: 'BBC Technology', url: 'https://feeds.bbci.co.uk/news/technology/rss.xml', color: '#5bf5c0', logo: 'https://static.files.bbci.co.uk/core/website/assets/static/icons/favicon-32x32.png' },
+  { name: 'Hacker News', url: 'https://hnrss.org/frontpage', color: '#f97316', logo: 'https://news.ycombinator.com/favicon.ico' },
 ];
 
 let newsCache = { items: [], fetchedAt: null };
@@ -93,7 +93,7 @@ app.use(express.json());
 // ── REACTIONS ENDPOINT ────────────────────────────────────────────────────────
 app.post('/api/react', (req, res) => {
   const { slug, emoji } = req.body;
-  const allowed = ['👍','🔥','🤯','💡','😮'];
+  const allowed = ['👍', '🔥', '🤯', '💡', '😮'];
   if (!slug || !allowed.includes(emoji)) return res.json({ ok: false });
   db.addReaction(slug, emoji);
   const counts = db.getReactions(slug);
@@ -119,9 +119,9 @@ function formatDate(d) {
 
 function timeAgo(d) {
   const diff = (Date.now() - new Date(d)) / 1000;
-  if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
-  return `${Math.floor(diff/86400)}d ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
 }
 
 function adsenseHead() {
@@ -137,10 +137,10 @@ function adUnit() {
 
 function catColor(cat) {
   const m = {
-    'AI Tools':'#00c882','Productivity':'#5b8af5','Gadgets':'#f5a623',
-    'Automation':'#c882f5','AI News':'#00e0a0','Future of Work':'#5bf5c0',
-    'Developer Tools':'#f55b5b','Tech Reviews':'#f5e05b',
-    'Space Tech':'#a78bfa','Cybersecurity':'#fb7185','Crypto & Web3':'#fbbf24'
+    'AI Tools': '#00c882', 'Productivity': '#5b8af5', 'Gadgets': '#f5a623',
+    'Automation': '#c882f5', 'AI News': '#00e0a0', 'Future of Work': '#5bf5c0',
+    'Developer Tools': '#f55b5b', 'Tech Reviews': '#f5e05b',
+    'Space Tech': '#a78bfa', 'Cybersecurity': '#fb7185', 'Crypto & Web3': '#fbbf24'
   };
   return m[cat] || '#00c882';
 }
@@ -230,7 +230,7 @@ ${adsenseHead()}
 </head>
 <body>
 <div class="topbar">
-  <span>${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</span>
+  <span>${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
   <span class="topbar-right">Updated every 6 hours · Powered by Claude AI</span>
 </div>
 <header>
@@ -257,18 +257,18 @@ ${adsenseHead()}
     <div class="header-ticker-wrap">
       <div class="header-ticker">
         <div class="header-ticker-inner">
-          ${newsCache.items.slice(0,12).map(item =>
-            `<a href="${item.link}" target="_blank" rel="noopener noreferrer" class="header-ticker-item">
+          ${newsCache.items.slice(0, 12).map(item =>
+    `<a href="${item.link}" target="_blank" rel="noopener noreferrer" class="header-ticker-item">
               <span class="header-ticker-source" style="color:${item.color}">${item.source}</span>
               <span class="header-ticker-title">${item.title}</span>
             </a><span class="header-ticker-sep">·</span>`
-          ).join('')}
-          ${newsCache.items.slice(0,12).map(item =>
-            `<a href="${item.link}" target="_blank" rel="noopener noreferrer" class="header-ticker-item">
+  ).join('')}
+          ${newsCache.items.slice(0, 12).map(item =>
+    `<a href="${item.link}" target="_blank" rel="noopener noreferrer" class="header-ticker-item">
               <span class="header-ticker-source" style="color:${item.color}">${item.source}</span>
               <span class="header-ticker-title">${item.title}</span>
             </a><span class="header-ticker-sep">·</span>`
-          ).join('')}
+  ).join('')}
         </div>
       </div>
     </div>
@@ -332,17 +332,17 @@ ${adsenseHead()}
     <div class="news-ticker">
       <div class="news-ticker-inner">
         ${newsCache.items.slice(0, 15).map(item =>
-          `<a href="${item.link}" target="_blank" rel="noopener noreferrer" class="ticker-item">
+    `<a href="${item.link}" target="_blank" rel="noopener noreferrer" class="ticker-item">
             <span class="ticker-source" style="color:${item.color}">${item.source}</span>
             <span class="ticker-title">${item.title}</span>
           </a>`
-        ).join('<span class="ticker-sep">·</span>')}
+  ).join('<span class="ticker-sep">·</span>')}
         ${newsCache.items.slice(0, 15).map(item =>
-          `<a href="${item.link}" target="_blank" rel="noopener noreferrer" class="ticker-item">
+    `<a href="${item.link}" target="_blank" rel="noopener noreferrer" class="ticker-item">
             <span class="ticker-source" style="color:${item.color}">${item.source}</span>
             <span class="ticker-title">${item.title}</span>
           </a>`
-        ).join('<span class="ticker-sep">·</span>')}
+  ).join('<span class="ticker-sep">·</span>')}
       </div>
     </div>
   </div>
@@ -364,8 +364,8 @@ app.get('/', (req, res) => {
     <a href="/article/${hero.slug}" class="hero-link">
       <div class="hero-img-wrap">
         ${hero.image_url
-          ? `<img src="${hero.image_url}" alt="${hero.image_alt||hero.title}" class="hero-img"/>`
-          : `<div class="hero-img hero-placeholder"></div>`}
+      ? `<img src="${hero.image_url}" alt="${hero.image_alt || hero.title}" class="hero-img"/>`
+      : `<div class="hero-img hero-placeholder"></div>`}
         <span class="cat-badge" style="--cc:${catColor(hero.category)}">${hero.category}</span>
       </div>
       <div class="hero-body">
@@ -433,10 +433,10 @@ app.get('/article/:slug', (req, res) => {
 
   // Smart related: keyword matching first, category fallback
   const titleWords = article.title.toLowerCase()
-    .replace(/[^a-z0-9 ]/g,' ').split(' ')
+    .replace(/[^a-z0-9 ]/g, ' ').split(' ')
     .filter(w => w.length > 4);
   const keywordRelated = titleWords.length > 0
-    ? db.searchArticles(titleWords[0], 10).filter(a => a.slug !== article.slug).slice(0,3)
+    ? db.searchArticles(titleWords[0], 10).filter(a => a.slug !== article.slug).slice(0, 3)
     : [];
   const related = keywordRelated.length >= 2
     ? keywordRelated
@@ -444,10 +444,10 @@ app.get('/article/:slug', (req, res) => {
 
   const imgHtml = article.image_url ? `
     <div class="article-hero-img">
-      <img src="${article.image_url}" alt="${article.image_alt||article.title}" onerror="this.style.display='none'"/>
+      <img src="${article.image_url}" alt="${article.image_alt || article.title}" onerror="this.style.display='none'"/>
       ${article.image_credit ? `<span class="img-credit">${article.image_credit_url
-        ? `<a href="${article.image_credit_url}" target="_blank">${article.image_credit}</a>`
-        : article.image_credit}</span>` : ''}
+      ? `<a href="${article.image_credit_url}" target="_blank">${article.image_credit}</a>`
+      : article.image_credit}</span>` : ''}
     </div>` : '';
 
   const tweetHtml = article.tweet_id
@@ -470,69 +470,69 @@ app.get('/article/:slug', (req, res) => {
       </div>
     </div>` : '';
 
-  const articleUrl = \`\${SITE_URL}/article/\${article.slug}\`;
+  const articleUrl = `${SITE_URL}/article/${article.slug}`;
   const encodedUrl = encodeURIComponent(articleUrl);
   const encodedTitle = encodeURIComponent(article.title);
 
-  const body = \`
+  const body = `
   <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar"></div></div>
   <article class="article-page">
     <div class="article-header">
-      <span class="cat-badge" style="--cc:\${catColor(article.category)}">\${article.category}</span>
-      <h1>\${article.title}</h1>
+      <span class="cat-badge" style="--cc:${catColor(article.category)}">${article.category}</span>
+      <h1>${article.title}</h1>
       <div class="article-meta-row">
-        <span>\${formatDate(article.created_at)}</span>
-        <span class="read-time-badge">⏱ \${article.read_time} min read</span>
-        <span>\${article.views} views</span>
-        \${tweetHtml}
+        <span>${formatDate(article.created_at)}</span>
+        <span class="read-time-badge">⏱ ${article.read_time} min read</span>
+        <span>${article.views} views</span>
+        ${tweetHtml}
       </div>
     </div>
-    \${imgHtml}
-    \${adUnit()}
-    <div class="article-body">\${marked(article.content)}</div>
-    \${adUnit()}
+    ${imgHtml}
+    ${adUnit()}
+    <div class="article-body">${marked(article.content)}</div>
+    ${adUnit()}
 
     <div class="share-section">
       <div class="share-label">// Share this article</div>
       <div class="share-buttons">
-        <a href="https://x.com/intent/tweet?text=\${encodedTitle}&url=\${encodedUrl}" target="_blank" rel="noopener" class="share-btn share-x">𝕏 Post</a>
-        <a href="https://www.linkedin.com/sharing/share-offsite/?url=\${encodedUrl}" target="_blank" rel="noopener" class="share-btn share-li">in Share</a>
-        <a href="https://wa.me/?text=\${encodedTitle}%20\${encodedUrl}" target="_blank" rel="noopener" class="share-btn share-wa">WhatsApp</a>
-        <button onclick="navigator.clipboard.writeText('\${articleUrl}').then(()=>{this.textContent='✓ Copied!';setTimeout(()=>this.textContent='Copy Link',2000)})" class="share-btn share-copy">Copy Link</button>
+        <a href="https://x.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}" target="_blank" rel="noopener" class="share-btn share-x">𝕏 Post</a>
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}" target="_blank" rel="noopener" class="share-btn share-li">in Share</a>
+        <a href="https://wa.me/?text=${encodedTitle}%20${encodedUrl}" target="_blank" rel="noopener" class="share-btn share-wa">WhatsApp</a>
+        <button onclick="navigator.clipboard.writeText('${articleUrl}').then(()=>{this.textContent='✓ Copied!';setTimeout(()=>this.textContent='Copy Link',2000)})" class="share-btn share-copy">Copy Link</button>
       </div>
     </div>
 
     <div class="reactions-section" id="reactions">
       <div class="share-label">// React to this article</div>
       <div class="reaction-buttons">
-        \${['👍','🔥','🤯','💡','😮'].map(e => \`
-        <button class="reaction-btn" data-emoji="\${e}" data-slug="\${article.slug}" onclick="handleReact(this)">
-          <span class="reaction-emoji">\${e}</span>
-          <span class="reaction-count" id="rc-\${e.codePointAt(0)}-\${article.slug}">0</span>
-        </button>\`).join('')}
+        ${['👍', '🔥', '🤯', '💡', '😮'].map(e => `
+        <button class="reaction-btn" data-emoji="${e}" data-slug="${article.slug}" onclick="handleReact(this)">
+          <span class="reaction-emoji">${e}</span>
+          <span class="reaction-count" id="rc-${e.codePointAt(0)}-${article.slug}">0</span>
+        </button>`).join('')}
       </div>
     </div>
 
     <div class="comments-section">
       <div class="share-label">// Discussion</div>
-      <script src="https://giscus.app/client.js"
-        data-repo="GITHUB_USERNAME/GITHUB_REPO"
-        data-repo-id="REPO_ID"
-        data-category="General"
-        data-category-id="CATEGORY_ID"
-        data-mapping="pathname"
-        data-strict="0"
-        data-reactions-enabled="0"
-        data-emit-metadata="0"
-        data-input-position="top"
-        data-theme="dark"
-        data-lang="en"
-        crossorigin="anonymous"
-        async>
-      </script>
+        <script src="https://giscus.app/client.js"
+                data-repo="L0n3w0lf9k/nodefeed"
+                data-repo-id="R_kgDORo7DOw"
+                data-category-id="DIC_kwDORo7DO84C4mk8"
+                data-mapping="pathname"
+                data-strict="0"
+                data-reactions-enabled="1"
+                data-emit-metadata="0"
+                data-input-position="bottom"
+                data-theme="preferred_color_scheme"
+                data-lang="en"
+                data-loading="lazy"
+                crossorigin="anonymous"
+                async>
+        </script>
     </div>
   </article>
-  \${relatedHtml}
+  ${relatedHtml}
 
   <script>
     // Reading progress bar
@@ -543,16 +543,16 @@ app.get('/article/:slug', (req, res) => {
     });
 
     // Load reaction counts
-    fetch('/api/reactions/\${article.slug}')
+    fetch('/api/reactions/${article.slug}')
       .then(r => r.json())
       .then(counts => {
         Object.entries(counts).forEach(([emoji, count]) => {
           const cp = emoji.codePointAt(0);
-          const el = document.getElementById('rc-' + cp + '-\${article.slug}');
+          const el = document.getElementById('rc-' + cp + '-${article.slug}');
           if (el) el.textContent = count;
         });
         // Restore user's previous reactions from localStorage
-        const key = 'reacted_\${article.slug}';
+        const key = 'reacted_${article.slug}';
         const reacted = JSON.parse(localStorage.getItem(key) || '[]');
         reacted.forEach(e => {
           const btn = document.querySelector('[data-emoji="' + e + '"]');
@@ -584,7 +584,7 @@ app.get('/article/:slug', (req, res) => {
         }
       });
     }
-  </script>\`;
+  </script>`;
 
   const jsonLd = JSON.stringify({
     "@context": "https://schema.org",
@@ -652,7 +652,7 @@ app.get('/search', (req, res) => {
 
   function highlight(text, term) {
     if (!term || !text) return text;
-    const re = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+    const re = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
     return text.replace(re, '<mark>$1</mark>');
   }
 
@@ -671,33 +671,9 @@ app.get('/search', (req, res) => {
       </div>
     </a>`).join('')}
   </div>`;
-  res.send(layout(\`Search: \${q}\`, body));
+  res.send(layout(`Search: ${q}`, body));
 });
 
-// About
-app.get('/about', (req, res) => {
-  const count = db.getCount();
-  const body = `
-  <article class="article-page">
-    <div class="article-header">
-      <h1>About NodeFeeds</h1>
-    </div>
-    <div class="article-body">
-      <p>NodeFeeds is an independent AI & tech intelligence magazine. Every article is researched and written autonomously by Claude AI — searching the live web for real, current information and publishing 4 fresh articles every day, automatically.</p>
-      <div class="about-stats">
-        <div class="stat-box"><div class="stat-num">${count}</div><div class="stat-label">Articles published</div></div>
-        <div class="stat-box"><div class="stat-num">6h</div><div class="stat-label">Publishing cadence</div></div>
-        <div class="stat-box"><div class="stat-num">4×</div><div class="stat-label">Articles per day</div></div>
-        <div class="stat-box"><div class="stat-num">100%</div><div class="stat-label">AI written</div></div>
-      </div>
-      <h2>How it works</h2>
-      <p>Every 6 hours, our system picks a trending topic in AI, tech, productivity, or gadgets. Claude AI then searches the web for the latest news and writes a full editorial article — complete with images, subheadings, and a practical takeaway. No human editors. No editorial bias.</p>
-      <h2>Stack</h2>
-      <p>Built with Node.js, hosted on Railway, powered by the Claude API with live web search. Images sourced from Unsplash or generated by Pollinations AI.</p>
-    </div>
-  </article>`;
-  res.send(layout('About NodeFeeds', body));
-});
 
 // Debug route — check image status
 app.get('/admin/images', (req, res) => {
@@ -709,8 +685,8 @@ app.get('/admin/images', (req, res) => {
     const onDisk = filename ? savedFiles.has(filename) : false;
     const status = !a.image_url ? '✗ No image' : isExternal ? '✗ External URL (needs repair)' : onDisk ? '✓ On disk' : '✗ File missing';
     return `<tr style="color:${onDisk ? '#00c882' : '#f55b5b'}">
-      <td style="padding:4px 8px">${a.title.slice(0,50)}</td>
-      <td style="padding:4px 8px;font-size:10px;word-break:break-all">${(a.image_url||'NONE').slice(0,80)}</td>
+      <td style="padding:4px 8px">${a.title.slice(0, 50)}</td>
+      <td style="padding:4px 8px;font-size:10px;word-break:break-all">${(a.image_url || 'NONE').slice(0, 80)}</td>
       <td style="padding:4px 8px">${status}</td>
     </tr>`;
   }).join('');
@@ -906,7 +882,7 @@ app.get('/topic/:keyword', (req, res) => {
       </div>
     </a>`).join('')}
   </div>`;
-  res.send(layout(\`Topic: \${keyword}\`, body, { description: \`All NodeFeeds articles about \${keyword}\` }));
+  res.send(layout(`Topic: ${keyword}`, body, { description: `All NodeFeeds articles about ${keyword}` }));
 });
 
 // Weekly digest
@@ -923,7 +899,7 @@ app.get('/digest', (req, res) => {
   const digestHtml = Object.entries(byCategory).map(([cat, arts]) => `
     <div class="digest-section">
       <h2 class="digest-cat" style="color:${catColor(cat)}">${cat}</h2>
-      ${arts.slice(0,3).map(a => `
+      ${arts.slice(0, 3).map(a => `
       <a href="/article/${a.slug}" class="digest-item">
         ${thumbHtml(a, 'digest-thumb')}
         <div class="digest-body">
@@ -938,7 +914,7 @@ app.get('/digest', (req, res) => {
   <div class="article-header">
     <h1>Weekly Digest</h1>
     <div class="article-meta-row">
-      <span>Week of ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</span>
+      <span>Week of ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
       <span>${articles.length} articles this week</span>
     </div>
   </div>
@@ -963,12 +939,12 @@ app.get('/news', async (req, res) => {
       <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="news-card">
         <div class="news-card-thumb ${item.image ? '' : 'news-card-logo-thumb'}">
           ${item.image
-            ? `<img src="${item.image}" alt="${item.title}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+        ? `<img src="${item.image}" alt="${item.title}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
                <div class="news-logo-fallback" style="display:none">
                  <img src="${item.logo}" alt="${item.source}" class="news-source-logo"/>
                  <span class="news-logo-name" style="color:${item.color}">${item.source}</span>
                </div>`
-            : `<div class="news-logo-fallback">
+        : `<div class="news-logo-fallback">
                  <img src="${item.logo}" alt="${item.source}" class="news-source-logo"/>
                  <span class="news-logo-name" style="color:${item.color}">${item.source}</span>
                </div>`}
