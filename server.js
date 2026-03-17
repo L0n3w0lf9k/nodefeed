@@ -88,6 +88,21 @@ const ADSENSE_ID = process.env.ADSENSE_PUBLISHER_ID || '';
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+// ── REACTIONS ENDPOINT ────────────────────────────────────────────────────────
+app.post('/api/react', (req, res) => {
+  const { slug, emoji } = req.body;
+  const allowed = ['👍','🔥','🤯','💡','😮'];
+  if (!slug || !allowed.includes(emoji)) return res.json({ ok: false });
+  db.addReaction(slug, emoji);
+  const counts = db.getReactions(slug);
+  res.json({ ok: true, counts });
+});
+
+app.get('/api/reactions/:slug', (req, res) => {
+  res.json(db.getReactions(req.params.slug));
+});
 
 // Serve images from Railway Volume
 const VOLUME_PATH = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, 'data');
@@ -176,6 +191,14 @@ function layout(title, body, meta = {}) {
       </div>
     </a>`).join('');
 
+  const trending = db.getTrending(24, 3);
+  const trendingHtml = trending.length > 0 ? trending.map(a => `
+    <a href="/article/${a.slug}" class="latest-side-item">
+      <span class="cat-label" style="color:${catColor(a.category)}">${a.category}</span>
+      <h4>${a.title}</h4>
+      <span class="meta-sm trending-views">🔥 ${a.views} views today</span>
+    </a>`).join('') : '<p style="padding:.75rem 1rem;font-size:12px;color:var(--text3)">Check back later</p>';
+
   const latestSideHtml = latest.map(a => `
     <a href="/article/${a.slug}" class="latest-side-item">
       <span class="cat-label" style="color:${catColor(a.category)}">${a.category}</span>
@@ -258,6 +281,7 @@ ${adsenseHead()}
     <a href="/">Home</a>
     ${navCats}
     <a href="/news">News</a>
+    <a href="/digest">Weekly Digest</a>
     <a href="/about">About</a>
   </nav>
 </header>
@@ -274,6 +298,10 @@ ${adsenseHead()}
       <div class="widget-title">// Latest</div>
       ${latestSideHtml}
     </div>
+    <div class="widget">
+      <div class="widget-title">// Trending Today</div>
+      ${trendingHtml}
+    </div>
     <div class="widget newsletter-widget">
       <div class="widget-title">// Stay Ahead</div>
       <p>NodeFeeds publishes 4 new articles every day — all researched and written by AI.</p>
@@ -289,6 +317,7 @@ ${adsenseHead()}
     <p>Independent AI & tech intelligence, published automatically every 6 hours.</p>
     <div class="footer-links">
       <a href="/about">About</a>
+      <a href="/digest">Weekly Digest</a>
       <a href="/contact">Contact</a>
       <a href="/privacy">Privacy</a>
       <a href="/terms">Terms</a>
@@ -402,8 +431,16 @@ app.get('/article/:slug', (req, res) => {
   if (!article) return res.status(404).send(layout('Not Found', '<div class="container"><p>Article not found.</p></div>'));
   db.incrementViews(req.params.slug);
 
-  const related = db.getArticlesByCategory(article.category, 5)
-    .filter(a => a.slug !== article.slug).slice(0, 3);
+  // Smart related: keyword matching first, category fallback
+  const titleWords = article.title.toLowerCase()
+    .replace(/[^a-z0-9 ]/g,' ').split(' ')
+    .filter(w => w.length > 4);
+  const keywordRelated = titleWords.length > 0
+    ? db.searchArticles(titleWords[0], 10).filter(a => a.slug !== article.slug).slice(0,3)
+    : [];
+  const related = keywordRelated.length >= 2
+    ? keywordRelated
+    : db.getArticlesByCategory(article.category, 5).filter(a => a.slug !== article.slug).slice(0, 3);
 
   const imgHtml = article.image_url ? `
     <div class="article-hero-img">
@@ -433,24 +470,121 @@ app.get('/article/:slug', (req, res) => {
       </div>
     </div>` : '';
 
-  const body = `
+  const articleUrl = \`\${SITE_URL}/article/\${article.slug}\`;
+  const encodedUrl = encodeURIComponent(articleUrl);
+  const encodedTitle = encodeURIComponent(article.title);
+
+  const body = \`
+  <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar"></div></div>
   <article class="article-page">
     <div class="article-header">
-      <span class="cat-badge" style="--cc:${catColor(article.category)}">${article.category}</span>
-      <h1>${article.title}</h1>
+      <span class="cat-badge" style="--cc:\${catColor(article.category)}">\${article.category}</span>
+      <h1>\${article.title}</h1>
       <div class="article-meta-row">
-        <span>${formatDate(article.created_at)}</span>
-        <span>${article.read_time} min read</span>
-        <span>${article.views} views</span>
-        ${tweetHtml}
+        <span>\${formatDate(article.created_at)}</span>
+        <span class="read-time-badge">⏱ \${article.read_time} min read</span>
+        <span>\${article.views} views</span>
+        \${tweetHtml}
       </div>
     </div>
-    ${imgHtml}
-    ${adUnit()}
-    <div class="article-body">${marked(article.content)}</div>
-    ${adUnit()}
+    \${imgHtml}
+    \${adUnit()}
+    <div class="article-body">\${marked(article.content)}</div>
+    \${adUnit()}
+
+    <div class="share-section">
+      <div class="share-label">// Share this article</div>
+      <div class="share-buttons">
+        <a href="https://x.com/intent/tweet?text=\${encodedTitle}&url=\${encodedUrl}" target="_blank" rel="noopener" class="share-btn share-x">𝕏 Post</a>
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=\${encodedUrl}" target="_blank" rel="noopener" class="share-btn share-li">in Share</a>
+        <a href="https://wa.me/?text=\${encodedTitle}%20\${encodedUrl}" target="_blank" rel="noopener" class="share-btn share-wa">WhatsApp</a>
+        <button onclick="navigator.clipboard.writeText('\${articleUrl}').then(()=>{this.textContent='✓ Copied!';setTimeout(()=>this.textContent='Copy Link',2000)})" class="share-btn share-copy">Copy Link</button>
+      </div>
+    </div>
+
+    <div class="reactions-section" id="reactions">
+      <div class="share-label">// React to this article</div>
+      <div class="reaction-buttons">
+        \${['👍','🔥','🤯','💡','😮'].map(e => \`
+        <button class="reaction-btn" data-emoji="\${e}" data-slug="\${article.slug}" onclick="handleReact(this)">
+          <span class="reaction-emoji">\${e}</span>
+          <span class="reaction-count" id="rc-\${e.codePointAt(0)}-\${article.slug}">0</span>
+        </button>\`).join('')}
+      </div>
+    </div>
+
+    <div class="comments-section">
+      <div class="share-label">// Discussion</div>
+      <script src="https://giscus.app/client.js"
+        data-repo="GITHUB_USERNAME/GITHUB_REPO"
+        data-repo-id="REPO_ID"
+        data-category="General"
+        data-category-id="CATEGORY_ID"
+        data-mapping="pathname"
+        data-strict="0"
+        data-reactions-enabled="0"
+        data-emit-metadata="0"
+        data-input-position="top"
+        data-theme="dark"
+        data-lang="en"
+        crossorigin="anonymous"
+        async>
+      </script>
+    </div>
   </article>
-  ${relatedHtml}`;
+  \${relatedHtml}
+
+  <script>
+    // Reading progress bar
+    window.addEventListener('scroll', () => {
+      const el = document.documentElement;
+      const pct = (el.scrollTop / (el.scrollHeight - el.clientHeight)) * 100;
+      document.getElementById('progress-bar').style.width = Math.min(pct, 100) + '%';
+    });
+
+    // Load reaction counts
+    fetch('/api/reactions/\${article.slug}')
+      .then(r => r.json())
+      .then(counts => {
+        Object.entries(counts).forEach(([emoji, count]) => {
+          const cp = emoji.codePointAt(0);
+          const el = document.getElementById('rc-' + cp + '-\${article.slug}');
+          if (el) el.textContent = count;
+        });
+        // Restore user's previous reactions from localStorage
+        const key = 'reacted_\${article.slug}';
+        const reacted = JSON.parse(localStorage.getItem(key) || '[]');
+        reacted.forEach(e => {
+          const btn = document.querySelector('[data-emoji="' + e + '"]');
+          if (btn) btn.classList.add('reacted');
+        });
+      });
+
+    function handleReact(btn) {
+      const emoji = btn.dataset.emoji;
+      const slug = btn.dataset.slug;
+      const key = 'reacted_' + slug;
+      const reacted = JSON.parse(localStorage.getItem(key) || '[]');
+      if (reacted.includes(emoji)) return; // already reacted
+
+      fetch('/api/react', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ slug, emoji })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          reacted.push(emoji);
+          localStorage.setItem(key, JSON.stringify(reacted));
+          btn.classList.add('reacted');
+          const cp = emoji.codePointAt(0);
+          const el = document.getElementById('rc-' + cp + '-' + slug);
+          if (el) el.textContent = data.counts[emoji] || 0;
+        }
+      });
+    }
+  </script>\`;
 
   const jsonLd = JSON.stringify({
     "@context": "https://schema.org",
@@ -515,22 +649,29 @@ app.get('/category/:cat', (req, res) => {
 app.get('/search', (req, res) => {
   const q = (req.query.q || '').trim();
   const results = q ? db.searchArticles(q, 20) : [];
+
+  function highlight(text, term) {
+    if (!term || !text) return text;
+    const re = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+    return text.replace(re, '<mark>$1</mark>');
+  }
+
   const body = `
-  <div class="section-head"><span>Search: "${q}"</span></div>
-  ${results.length === 0 ? `<p class="no-results">No articles found for "<strong>${q}</strong>". Try a different keyword.</p>` : ''}
+  <div class="section-head"><span>Search: "${q}" — ${results.length} result${results.length !== 1 ? 's' : ''}</span></div>
+  ${results.length === 0 && q ? `<p class="no-results">No articles found for "<strong>${q}</strong>". Try a different keyword.</p>` : ''}
   <div class="article-grid">
     ${results.map(a => `
     <a href="/article/${a.slug}" class="article-card">
       ${thumbHtml(a, 'card-thumb')}
       <div class="card-body">
         <span class="cat-label" style="color:${catColor(a.category)}">${a.category}</span>
-        <h3>${a.title}</h3>
-        <p>${a.excerpt}</p>
+        <h3>${highlight(a.title, q)}</h3>
+        <p>${highlight(a.excerpt, q)}</p>
         <span class="meta-sm">${timeAgo(a.created_at)} · ${a.read_time} min</span>
       </div>
     </a>`).join('')}
   </div>`;
-  res.send(layout(`Search: ${q}`, body));
+  res.send(layout(\`Search: \${q}\`, body));
 });
 
 // About
@@ -743,6 +884,67 @@ app.get('/about', (req, res) => {
     </div>
   </article>`;
   res.send(layout('About NodeFeeds', body, { description: 'NodeFeeds is an independent AI & tech intelligence magazine publishing fresh articles every 6 hours.' }));
+});
+
+// Topic pages
+app.get('/topic/:keyword', (req, res) => {
+  const keyword = decodeURIComponent(req.params.keyword);
+  const articles = db.searchArticles(keyword, 30);
+  const body = `
+  <div class="section-head"><span>Topic: ${keyword}</span></div>
+  <div class="article-grid">
+    ${articles.length === 0
+      ? '<p class="no-results">No articles found for this topic yet.</p>'
+      : articles.map(a => `
+    <a href="/article/${a.slug}" class="article-card">
+      ${thumbHtml(a, 'card-thumb')}
+      <div class="card-body">
+        <span class="cat-label" style="color:${catColor(a.category)}">${a.category}</span>
+        <h3>${a.title}</h3>
+        <p>${a.excerpt}</p>
+        <span class="meta-sm">${timeAgo(a.created_at)} · ${a.read_time} min</span>
+      </div>
+    </a>`).join('')}
+  </div>`;
+  res.send(layout(\`Topic: \${keyword}\`, body, { description: \`All NodeFeeds articles about \${keyword}\` }));
+});
+
+// Weekly digest
+app.get('/digest', (req, res) => {
+  const articles = db.getArticles(200).filter(a => {
+    const age = (Date.now() - new Date(a.created_at)) / 86400000;
+    return age <= 7;
+  });
+  const byCategory = {};
+  articles.forEach(a => {
+    if (!byCategory[a.category]) byCategory[a.category] = [];
+    byCategory[a.category].push(a);
+  });
+  const digestHtml = Object.entries(byCategory).map(([cat, arts]) => `
+    <div class="digest-section">
+      <h2 class="digest-cat" style="color:${catColor(cat)}">${cat}</h2>
+      ${arts.slice(0,3).map(a => `
+      <a href="/article/${a.slug}" class="digest-item">
+        ${thumbHtml(a, 'digest-thumb')}
+        <div class="digest-body">
+          <h3>${a.title}</h3>
+          <p>${a.excerpt}</p>
+          <span class="meta-sm">${formatDate(a.created_at)} · ${a.read_time} min read</span>
+        </div>
+      </a>`).join('')}
+    </div>`).join('');
+
+  const body = `
+  <div class="article-header">
+    <h1>Weekly Digest</h1>
+    <div class="article-meta-row">
+      <span>Week of ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</span>
+      <span>${articles.length} articles this week</span>
+    </div>
+  </div>
+  ${digestHtml.length ? digestHtml : '<p class="no-results">No articles this week yet — check back soon.</p>'}`;
+
+  res.send(layout('Weekly Digest', body, { description: 'NodeFeeds weekly roundup — the best AI & tech articles from the past 7 days.' }));
 });
 
 // News

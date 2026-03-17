@@ -24,7 +24,14 @@ async function getDb() {
     db = new SQL.Database();
   }
   db.run(`
-    CREATE TABLE IF NOT EXISTS articles (
+    CREATE TABLE IF NOT EXISTS reactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      slug TEXT NOT NULL,
+      emoji TEXT NOT NULL,
+      count INTEGER DEFAULT 0,
+      UNIQUE(slug, emoji)
+    );
+  CREATE TABLE IF NOT EXISTS articles (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       slug TEXT UNIQUE NOT NULL,
       title TEXT NOT NULL,
@@ -134,6 +141,29 @@ module.exports = {
     return queryAll(
       "SELECT slug, title, excerpt, category FROM articles WHERE created_at >= datetime('now', ? || ' days') ORDER BY created_at DESC",
       [`-${days}`]
+    );
+  },
+
+  addReaction(slug, emoji) {
+    run(
+      'INSERT INTO reactions (slug, emoji, count) VALUES (?,?,1) ON CONFLICT(slug,emoji) DO UPDATE SET count=count+1',
+      [slug, emoji]
+    );
+  },
+
+  getReactions(slug) {
+    const rows = queryAll('SELECT emoji, count FROM reactions WHERE slug=?', [slug]);
+    const result = {};
+    rows.forEach(r => { result[r.emoji] = r.count; });
+    return result;
+  },
+
+  getTrending(hours = 24, limit = 5) {
+    // Gets most viewed articles updated in the last N hours
+    // Since we don't track per-hour views, we use recently created + high views as proxy
+    return queryAll(
+      "SELECT * FROM articles WHERE created_at >= datetime('now', ? || ' hours') ORDER BY views DESC LIMIT ?",
+      [\`-\${hours}\`, limit]
     );
   },
 
