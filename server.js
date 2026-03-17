@@ -8,6 +8,54 @@ const db = require('./src/db');
 const { generateArticle } = require('./src/generator');
 const { generateAndSaveImage, listSavedImages } = require('./src/images');
 
+const RSSParser = require('rss-parser');
+const rssParser = new RSSParser({ timeout: 10000 });
+
+// ── NEWS CACHE ────────────────────────────────────────────────────────────────
+const NEWS_SOURCES = [
+  { name: 'TechCrunch', url: 'https://techcrunch.com/feed/', color: '#00c882' },
+  { name: 'The Verge', url: 'https://www.theverge.com/rss/index.xml', color: '#fb7185' },
+  { name: 'Ars Technica', url: 'https://feeds.arstechnica.com/arstechnica/index', color: '#f5a623' },
+  { name: 'Wired', url: 'https://www.wired.com/feed/rss', color: '#5b8af5' },
+  { name: 'MIT Tech Review', url: 'https://www.technologyreview.com/feed/', color: '#a78bfa' },
+  { name: 'VentureBeat', url: 'https://venturebeat.com/feed/', color: '#fbbf24' },
+  { name: 'Reuters Tech', url: 'https://feeds.reuters.com/reuters/technologyNews', color: '#5bf5c0' },
+];
+
+let newsCache = { items: [], fetchedAt: null };
+
+async function fetchNews() {
+  console.log('[News] Fetching RSS feeds...');
+  const allItems = [];
+
+  for (const source of NEWS_SOURCES) {
+    try {
+      const feed = await rssParser.parseURL(source.url);
+      const items = (feed.items || []).slice(0, 5).map(item => ({
+        title: item.title || '',
+        link: item.link || item.guid || '',
+        source: source.name,
+        color: source.color,
+        date: item.pubDate || item.isoDate || new Date().toISOString(),
+        excerpt: (item.contentSnippet || item.summary || '').slice(0, 160).trim(),
+      }));
+      allItems.push(...items);
+      console.log(`[News] ✓ ${source.name}: ${items.length} items`);
+    } catch (e) {
+      console.error(`[News] ✗ ${source.name}: ${e.message}`);
+    }
+  }
+
+  // Sort by date, newest first, take top 20
+  allItems.sort((a, b) => new Date(b.date) - new Date(a.date));
+  newsCache = { items: allItems.slice(0, 20), fetchedAt: new Date() };
+  console.log(`[News] Cache updated: ${newsCache.items.length} items`);
+  return newsCache.items;
+}
+
+// Refresh news every 15 minutes
+cron.schedule('*/15 * * * *', fetchNews);
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const SITE_NAME = 'NodeFeeds';
@@ -32,9 +80,9 @@ function formatDate(d) {
 
 function timeAgo(d) {
   const diff = (Date.now() - new Date(d)) / 1000;
-  if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
-  return `${Math.floor(diff/86400)}d ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
 }
 
 function adsenseHead() {
@@ -50,10 +98,10 @@ function adUnit() {
 
 function catColor(cat) {
   const m = {
-    'AI Tools':'#00c882','Productivity':'#5b8af5','Gadgets':'#f5a623',
-    'Automation':'#c882f5','AI News':'#00e0a0','Future of Work':'#5bf5c0',
-    'Developer Tools':'#f55b5b','Tech Reviews':'#f5e05b',
-    'Space Tech':'#a78bfa','Cybersecurity':'#fb7185','Crypto & Web3':'#fbbf24'
+    'AI Tools': '#00c882', 'Productivity': '#5b8af5', 'Gadgets': '#f5a623',
+    'Automation': '#c882f5', 'AI News': '#00e0a0', 'Future of Work': '#5bf5c0',
+    'Developer Tools': '#f55b5b', 'Tech Reviews': '#f5e05b',
+    'Space Tech': '#a78bfa', 'Cybersecurity': '#fb7185', 'Crypto & Web3': '#fbbf24'
   };
   return m[cat] || '#00c882';
 }
@@ -135,7 +183,7 @@ ${adsenseHead()}
 </head>
 <body>
 <div class="topbar">
-  <span>${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</span>
+  <span>${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
   <span class="topbar-right">Updated every 6 hours · Powered by Claude AI</span>
 </div>
 <header>
@@ -167,10 +215,11 @@ ${adsenseHead()}
   <nav>
     <a href="/">Home</a>
     ${navCats}
+    <a href="/news">News</a>
     <a href="/about">About</a>
   </nav>
 </header>
-
+ 
 <div class="site-wrap">
   <main class="main-col">${body}</main>
   <aside class="side-col">
@@ -191,7 +240,7 @@ ${adsenseHead()}
     ${adUnit()}
   </aside>
 </div>
-
+ 
 <footer>
   <div class="footer-inner">
     <div class="footer-brand">node<span class="accent">feeds</span></div>
@@ -225,8 +274,8 @@ app.get('/', (req, res) => {
     <a href="/article/${hero.slug}" class="hero-link">
       <div class="hero-img-wrap">
         ${hero.image_url
-          ? `<img src="${hero.image_url}" alt="${hero.image_alt||hero.title}" class="hero-img"/>`
-          : `<div class="hero-img hero-placeholder"></div>`}
+      ? `<img src="${hero.image_url}" alt="${hero.image_alt || hero.title}" class="hero-img"/>`
+      : `<div class="hero-img hero-placeholder"></div>`}
         <span class="cat-badge" style="--cc:${catColor(hero.category)}">${hero.category}</span>
       </div>
       <div class="hero-body">
@@ -297,10 +346,10 @@ app.get('/article/:slug', (req, res) => {
 
   const imgHtml = article.image_url ? `
     <div class="article-hero-img">
-      <img src="${article.image_url}" alt="${article.image_alt||article.title}" onerror="this.style.display='none'"/>
+      <img src="${article.image_url}" alt="${article.image_alt || article.title}" onerror="this.style.display='none'"/>
       ${article.image_credit ? `<span class="img-credit">${article.image_credit_url
-        ? `<a href="${article.image_credit_url}" target="_blank">${article.image_credit}</a>`
-        : article.image_credit}</span>` : ''}
+      ? `<a href="${article.image_credit_url}" target="_blank">${article.image_credit}</a>`
+      : article.image_credit}</span>` : ''}
     </div>` : '';
 
   const tweetHtml = article.tweet_id
@@ -458,8 +507,8 @@ app.get('/admin/images', (req, res) => {
     const onDisk = filename ? savedFiles.has(filename) : false;
     const status = !a.image_url ? '✗ No image' : isExternal ? '✗ External URL (needs repair)' : onDisk ? '✓ On disk' : '✗ File missing';
     return `<tr style="color:${onDisk ? '#00c882' : '#f55b5b'}">
-      <td style="padding:4px 8px">${a.title.slice(0,50)}</td>
-      <td style="padding:4px 8px;font-size:10px;word-break:break-all">${(a.image_url||'NONE').slice(0,80)}</td>
+      <td style="padding:4px 8px">${a.title.slice(0, 50)}</td>
+      <td style="padding:4px 8px;font-size:10px;word-break:break-all">${(a.image_url || 'NONE').slice(0, 80)}</td>
       <td style="padding:4px 8px">${status}</td>
     </tr>`;
   }).join('');
@@ -487,7 +536,7 @@ app.get('/privacy', (req, res) => {
     </div>
     <div class="article-body">
       <p>NodeFeeds ("we", "us", "our") is operated by Luis Matos, based in Lisbon, Portugal. This Privacy Policy explains how we collect, use, and protect your information when you visit nodefeeds.com.</p>
-
+ 
       <h2>Information We Collect</h2>
       <p>We do not require you to create an account or provide personal information to read NodeFeeds. We collect the following data automatically:</p>
       <ul>
@@ -495,29 +544,29 @@ app.get('/privacy', (req, res) => {
         <li><strong>Cookies</strong> — We use cookies served by Google AdSense to display relevant advertisements. See Google's Privacy Policy for details.</li>
         <li><strong>Analytics</strong> — We may use aggregated, anonymised analytics to understand how our content is used.</li>
       </ul>
-
+ 
       <h2>How We Use Your Information</h2>
       <ul>
         <li>To serve and improve the website</li>
         <li>To display relevant advertising via Google AdSense</li>
         <li>To comply with legal obligations</li>
       </ul>
-
+ 
       <h2>Google AdSense & Advertising</h2>
       <p>NodeFeeds uses Google AdSense to display advertisements. Google may use cookies to serve ads based on your prior visits to this or other websites. You can opt out of personalised advertising by visiting <a href="https://www.google.com/settings/ads" target="_blank">Google's Ad Settings</a>.</p>
-
+ 
       <h2>Your Rights (GDPR)</h2>
       <p>As a resident of the European Economic Area, you have the right to access, correct, or delete your personal data. You also have the right to object to processing and to data portability. To exercise these rights, contact us at the email below.</p>
-
+ 
       <h2>Data Retention</h2>
       <p>Server log data is retained for a maximum of 90 days. We do not sell or share your personal data with third parties except as required by law or as described in this policy.</p>
-
+ 
       <h2>Third Party Links</h2>
       <p>Articles on NodeFeeds may contain links to external websites. We are not responsible for the privacy practices of those sites.</p>
-
+ 
       <h2>Changes to This Policy</h2>
       <p>We may update this policy from time to time. Changes will be posted on this page with an updated date.</p>
-
+ 
       <h2>Contact</h2>
       <p>For privacy-related questions: <a href="mailto:nodefeeds@outlook.com">nodefeeds@outlook.com</a></p>
     </div>
@@ -534,29 +583,29 @@ app.get('/terms', (req, res) => {
     </div>
     <div class="article-body">
       <p>By accessing and using NodeFeeds (nodefeeds.com), you agree to be bound by these Terms of Service. If you do not agree, please do not use this website.</p>
-
+ 
       <h2>About NodeFeeds</h2>
       <p>NodeFeeds is an AI-powered technology news publication. Articles are researched and written autonomously using Claude AI, with web search to source current information. While we strive for accuracy, all content should be independently verified before being relied upon for decisions.</p>
-
+ 
       <h2>Content & Accuracy</h2>
       <p>NodeFeeds makes reasonable efforts to ensure the accuracy of published content. However, given the automated nature of our publication, we cannot guarantee that all information is current, complete, or error-free. Articles include references to source material — please consult original sources for critical decisions.</p>
       <p>NodeFeeds is not responsible for any errors, omissions, or outcomes resulting from the use of information on this site.</p>
-
+ 
       <h2>Intellectual Property</h2>
       <p>The NodeFeeds name, logo, and original content are the property of Luis Matos. You may share articles with attribution and a link back to the original. Reproduction of full articles without permission is prohibited.</p>
-
+ 
       <h2>Advertising</h2>
       <p>NodeFeeds displays advertisements via Google AdSense. Advertisements are clearly distinguished from editorial content. NodeFeeds does not accept paid placements or sponsored articles.</p>
-
+ 
       <h2>External Links</h2>
       <p>NodeFeeds articles link to external sources as references. We do not endorse and are not responsible for the content of external sites.</p>
-
+ 
       <h2>Limitation of Liability</h2>
       <p>NodeFeeds and its operators shall not be liable for any direct, indirect, incidental, or consequential damages arising from your use of this website or reliance on its content.</p>
-
+ 
       <h2>Governing Law</h2>
       <p>These terms are governed by the laws of Portugal and the European Union.</p>
-
+ 
       <h2>Contact</h2>
       <p>Questions about these terms: <a href="mailto:nodefeeds@outlook.com">nodefeeds@outlook.com</a></p>
     </div>
@@ -595,15 +644,15 @@ app.get('/about', (req, res) => {
     </div>
     <div class="article-body">
       <p><strong>NodeFeeds</strong> is an independent AI & tech intelligence magazine publishing fresh articles every 6 hours, 24 hours a day. Every article is researched using live web search and written by Claude AI — one of the most capable large language models available today.</p>
-
+ 
       <h2>Our mission</h2>
       <p>To keep curious people informed about the fast-moving world of artificial intelligence, technology, productivity, space exploration, cybersecurity, and crypto — without the noise, hype, or paywalls that dominate mainstream tech media.</p>
       <p>We believe good journalism should be accessible, accurate, and timely. NodeFeeds publishes ${count} articles and counting, covering ${cats.length} categories across the tech landscape.</p>
-
+ 
       <h2>How it works</h2>
       <p>Every 6 hours, our system selects a topic from a curated pool of tech categories. Claude AI then searches the live web for the latest developments, synthesises information from multiple sources, and writes a structured editorial article complete with citations and references.</p>
       <p>Articles are reviewed against recent publications to prevent repetition, and each one includes a references section linking back to original sources. Images are generated uniquely per article using Pollinations AI.</p>
-
+ 
       <h2>Editorial standards</h2>
       <ul>
         <li>Every factual claim includes a citation to the original source</li>
@@ -612,13 +661,13 @@ app.get('/about', (req, res) => {
         <li>Corrections are made promptly when errors are identified</li>
         <li>We do not repeat the same topic within 30 days unless the story has substantially developed</li>
       </ul>
-
+ 
       <h2>Publisher</h2>
       <p><strong>Luis Matos</strong><br/>
       Lisbon, Portugal<br/>
       <a href="mailto:nodefeeds@outlook.com">nodefeeds@outlook.com</a><br/>
       <a href="https://x.com/nodefeeds" target="_blank">@nodefeeds on X</a></p>
-
+ 
       <h2>Technology</h2>
       <div class="about-stats">
         <div class="stat-box"><div class="stat-num">${count}</div><div class="stat-label">Articles published</div></div>
@@ -627,12 +676,49 @@ app.get('/about', (req, res) => {
         <div class="stat-box"><div class="stat-num">100%</div><div class="stat-label">Source-cited</div></div>
       </div>
       <p>Built with Node.js, hosted on Railway, powered by the Claude API with live web search. Source images generated by Pollinations AI.</p>
-
+ 
       <h2>Legal</h2>
       <p><a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Service</a> · <a href="/contact">Contact</a></p>
     </div>
   </article>`;
   res.send(layout('About NodeFeeds', body, { description: 'NodeFeeds is an independent AI & tech intelligence magazine publishing fresh articles every 6 hours.' }));
+});
+
+// News
+app.get('/news', async (req, res) => {
+  // Use cache if fresh (under 1 hour), otherwise fetch
+  if (!newsCache.fetchedAt || (Date.now() - newsCache.fetchedAt) > 900000) {
+    await fetchNews();
+  }
+
+  const items = newsCache.items;
+  const fetchedAgo = newsCache.fetchedAt ? timeAgo(newsCache.fetchedAt) : 'never';
+
+  const newsHtml = items.length === 0
+    ? '<p class="no-results">News is loading — check back in a moment.</p>'
+    : items.map(item => `
+      <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="news-item">
+        <div class="news-source" style="color:${item.color}">${item.source}</div>
+        <h3 class="news-title">${item.title}</h3>
+        ${item.excerpt ? `<p class="news-excerpt">${item.excerpt}</p>` : ''}
+        <span class="meta-sm">${timeAgo(item.date)}</span>
+      </a>`).join('');
+
+  const body = `
+  <div class="news-header">
+    <div class="section-head"><span>Live Tech News</span></div>
+    <span class="news-refresh">Updated ${fetchedAgo} · <a href="/news">Refresh</a></span>
+  </div>
+  <div class="news-sources-bar">
+    ${NEWS_SOURCES.map(s => `<span class="news-source-tag" style="--sc:${s.color}">${s.name}</span>`).join('')}
+  </div>
+  <div class="news-grid">
+    ${newsHtml}
+  </div>`;
+
+  res.send(layout('Live Tech News', body, {
+    description: 'Latest tech news from TechCrunch, The Verge, Ars Technica, Wired, MIT Tech Review, VentureBeat and Reuters — updated hourly.'
+  }));
 });
 
 // RSS
@@ -694,6 +780,9 @@ async function start() {
         await generateArticle();
       }
 
+      // Fetch initial news cache
+      fetchNews().catch(e => console.error('[News] Initial fetch failed:', e.message));
+
       // Repair articles missing images or with external URLs
       const allArts = db.getArticles(200);
       const missing = allArts.filter(a => {
@@ -705,7 +794,7 @@ async function start() {
       if (missing.length > 0) {
         console.log(`[NodeFeeds] Repairing ${missing.length} articles without images...`);
         for (const article of missing) {
-          const image = await generateAndSaveImage(article.slug, article.title, article.category, article.excerpt);
+          const image = await generateAndSaveImage(article.slug, article.title, article.category);
           if (image) {
             db.updateArticleImage(article.slug, image);
             console.log(`[NodeFeeds] ✓ Repaired: "${article.title}"`);
