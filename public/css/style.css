@@ -183,3 +183,64 @@ footer p{font-size:12px;color:var(--text3);line-height:1.7;margin-bottom:.75rem}
   .about-stats{grid-template-columns:1fr 1fr}
   .side-col{grid-template-columns:1fr}
 }
+
+/* REFERENCES SECTION */
+.article-body h2:has(+ ol li a),
+.article-body h2 + ol {
+  font-size: 14px;
+}
+
+.references-section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.article-body ol li,
+.article-body ul li {
+  font-size: 15px;
+  line-height: 1.6;
+  margin-bottom: .5rem;
+  color: var(--text2);
+}
+
+/* Style the References heading differently */
+.article-body h2:last-of-type {
+  font-size: 1rem;
+  color: var(--text3);
+  letter-spacing: .1em;
+  font-family: var(--mono);
+  text-transform: uppercase;
+  font-weight: 400;
+  border-top: 1px solid var(--border);
+  padding-top: 1.5rem;
+  margin-top: 2rem;
+}
+
+/* Inline citation links like [[1]] */
+.article-body a[href^="#ref"] {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+  border-bottom: none;
+  vertical-align: super;
+  padding: 0 2px;
+  opacity: .8;
+}
+
+.article-body a[href^="#ref"]:hover {
+  opacity: 1;
+}
+
+/* Reference list links */
+.article-body .references a,
+.article-body ol a {
+  color: var(--accent);
+  border-bottom: 1px solid rgba(0,200,130,.2);
+  word-break: break-all;
+  font-size: 13px;
+}
+
+.article-body ol a:hover {
+  border-bottom-color: var(--accent);
+}

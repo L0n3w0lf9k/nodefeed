@@ -83,8 +83,9 @@ function sitemap(articles) {
 // ── LAYOUT ───────────────────────────────────────────────────────────────────
 
 function layout(title, body, meta = {}) {
-  const desc = meta.description || 'AI & Tech Intelligence, Delivered Fresh — updated every 6 hours by Claude AI';
-  const img = meta.image || '';
+  const { description, image, jsonLd } = meta;
+  const desc = description || 'AI & Tech Intelligence, Delivered Fresh — updated every 6 hours by Claude AI';
+  const img = image || '';
   const cats = db.getCategories();
   const popular = db.getMostViewed(4);
   const latest = db.getArticles(3);
@@ -196,12 +197,15 @@ ${adsenseHead()}
     <div class="footer-brand">node<span class="accent">feeds</span></div>
     <p>Independent AI & tech intelligence, published automatically every 6 hours.</p>
     <div class="footer-links">
+      <a href="/about">About</a>
+      <a href="/contact">Contact</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
       <a href="/feed.xml">RSS</a>
       <a href="/sitemap.xml">Sitemap</a>
-      <a href="/about">About</a>
       <a href="https://x.com/nodefeeds" target="_blank">@nodefeeds</a>
     </div>
-    <p class="footer-copy">© ${new Date().getFullYear()} NodeFeeds · Built with Claude AI</p>
+    <p class="footer-copy">© ${new Date().getFullYear()} NodeFeeds · Independent AI & Tech Intelligence · Lisbon, Portugal</p>
   </div>
 </footer>
 </body>
@@ -267,7 +271,19 @@ app.get('/', (req, res) => {
     </div>
   </section>` : '';
 
-  res.send(layout('AI & Tech Intelligence', heroHtml + gridHtml));
+  const homeJsonLd = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "NodeFeeds",
+    "url": SITE_URL,
+    "description": "Independent AI & tech intelligence, published automatically every 6 hours.",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": `${SITE_URL}/search?q={search_term_string}`,
+      "query-input": "required name=search_term_string"
+    }
+  });
+  res.send(layout('AI & Tech Intelligence', heroHtml + gridHtml, { jsonLd: homeJsonLd }));
 });
 
 // Article
@@ -326,9 +342,40 @@ app.get('/article/:slug', (req, res) => {
   </article>
   ${relatedHtml}`;
 
+  const jsonLd = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "headline": article.title,
+    "description": article.excerpt,
+    "image": article.image_url ? `${SITE_URL}${article.image_url}` : '',
+    "datePublished": new Date(article.created_at).toISOString(),
+    "dateModified": new Date(article.created_at).toISOString(),
+    "author": {
+      "@type": "Organization",
+      "name": "NodeFeeds Editorial",
+      "url": SITE_URL
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "NodeFeeds",
+      "url": SITE_URL,
+      "logo": {
+        "@type": "ImageObject",
+        "url": `${SITE_URL}/favicon.svg`
+      }
+    },
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": `${SITE_URL}/article/${article.slug}`
+    },
+    "articleSection": article.category,
+    "wordCount": article.content.split(/\s+/).length
+  });
+
   res.send(layout(article.title, body, {
     description: article.excerpt,
-    image: article.image_url || ''
+    image: article.image_url || '',
+    jsonLd
   }));
 });
 
@@ -425,6 +472,165 @@ app.get('/admin/images', (req, res) => {
 app.get('/ads.txt', (req, res) => {
   res.setHeader('Content-Type', 'text/plain');
   res.send(`google.com, ${ADSENSE_ID}, DIRECT, f08c47fec0942fa0`);
+});
+
+// ── LEGAL & TRUST PAGES ─────────────────────────────────────────────────────
+
+app.get('/privacy', (req, res) => {
+  const body = `
+  <article class="article-page">
+    <div class="article-header">
+      <h1>Privacy Policy</h1>
+      <div class="article-meta-row"><span>Last updated: March 2026</span></div>
+    </div>
+    <div class="article-body">
+      <p>NodeFeeds ("we", "us", "our") is operated by Luis Matos, based in Lisbon, Portugal. This Privacy Policy explains how we collect, use, and protect your information when you visit nodefeeds.com.</p>
+
+      <h2>Information We Collect</h2>
+      <p>We do not require you to create an account or provide personal information to read NodeFeeds. We collect the following data automatically:</p>
+      <ul>
+        <li><strong>Log data</strong> — IP address, browser type, pages visited, time and date of visits. This is standard web server logging.</li>
+        <li><strong>Cookies</strong> — We use cookies served by Google AdSense to display relevant advertisements. See Google's Privacy Policy for details.</li>
+        <li><strong>Analytics</strong> — We may use aggregated, anonymised analytics to understand how our content is used.</li>
+      </ul>
+
+      <h2>How We Use Your Information</h2>
+      <ul>
+        <li>To serve and improve the website</li>
+        <li>To display relevant advertising via Google AdSense</li>
+        <li>To comply with legal obligations</li>
+      </ul>
+
+      <h2>Google AdSense & Advertising</h2>
+      <p>NodeFeeds uses Google AdSense to display advertisements. Google may use cookies to serve ads based on your prior visits to this or other websites. You can opt out of personalised advertising by visiting <a href="https://www.google.com/settings/ads" target="_blank">Google's Ad Settings</a>.</p>
+
+      <h2>Your Rights (GDPR)</h2>
+      <p>As a resident of the European Economic Area, you have the right to access, correct, or delete your personal data. You also have the right to object to processing and to data portability. To exercise these rights, contact us at the email below.</p>
+
+      <h2>Data Retention</h2>
+      <p>Server log data is retained for a maximum of 90 days. We do not sell or share your personal data with third parties except as required by law or as described in this policy.</p>
+
+      <h2>Third Party Links</h2>
+      <p>Articles on NodeFeeds may contain links to external websites. We are not responsible for the privacy practices of those sites.</p>
+
+      <h2>Changes to This Policy</h2>
+      <p>We may update this policy from time to time. Changes will be posted on this page with an updated date.</p>
+
+      <h2>Contact</h2>
+      <p>For privacy-related questions: <a href="mailto:contact@nodefeeds.com">contact@nodefeeds.com</a></p>
+    </div>
+  </article>`;
+  res.send(layout('Privacy Policy', body, { description: 'NodeFeeds Privacy Policy — how we collect and use data.' }));
+});
+
+app.get('/terms', (req, res) => {
+  const body = `
+  <article class="article-page">
+    <div class="article-header">
+      <h1>Terms of Service</h1>
+      <div class="article-meta-row"><span>Last updated: March 2026</span></div>
+    </div>
+    <div class="article-body">
+      <p>By accessing and using NodeFeeds (nodefeeds.com), you agree to be bound by these Terms of Service. If you do not agree, please do not use this website.</p>
+
+      <h2>About NodeFeeds</h2>
+      <p>NodeFeeds is an AI-powered technology news publication. Articles are researched and written autonomously using Claude AI, with web search to source current information. While we strive for accuracy, all content should be independently verified before being relied upon for decisions.</p>
+
+      <h2>Content & Accuracy</h2>
+      <p>NodeFeeds makes reasonable efforts to ensure the accuracy of published content. However, given the automated nature of our publication, we cannot guarantee that all information is current, complete, or error-free. Articles include references to source material — please consult original sources for critical decisions.</p>
+      <p>NodeFeeds is not responsible for any errors, omissions, or outcomes resulting from the use of information on this site.</p>
+
+      <h2>Intellectual Property</h2>
+      <p>The NodeFeeds name, logo, and original content are the property of Luis Matos. You may share articles with attribution and a link back to the original. Reproduction of full articles without permission is prohibited.</p>
+
+      <h2>Advertising</h2>
+      <p>NodeFeeds displays advertisements via Google AdSense. Advertisements are clearly distinguished from editorial content. NodeFeeds does not accept paid placements or sponsored articles.</p>
+
+      <h2>External Links</h2>
+      <p>NodeFeeds articles link to external sources as references. We do not endorse and are not responsible for the content of external sites.</p>
+
+      <h2>Limitation of Liability</h2>
+      <p>NodeFeeds and its operators shall not be liable for any direct, indirect, incidental, or consequential damages arising from your use of this website or reliance on its content.</p>
+
+      <h2>Governing Law</h2>
+      <p>These terms are governed by the laws of Portugal and the European Union.</p>
+
+      <h2>Contact</h2>
+      <p>Questions about these terms: <a href="mailto:contact@nodefeeds.com">contact@nodefeeds.com</a></p>
+    </div>
+  </article>`;
+  res.send(layout('Terms of Service', body, { description: 'NodeFeeds Terms of Service.' }));
+});
+
+app.get('/contact', (req, res) => {
+  const body = `
+  <article class="article-page">
+    <div class="article-header">
+      <h1>Contact</h1>
+    </div>
+    <div class="article-body">
+      <p>NodeFeeds is an independent AI & tech intelligence publication based in Portugal.</p>
+      <h2>Get in touch</h2>
+      <p>For general enquiries, corrections, or feedback:</p>
+      <p><strong>Email:</strong> <a href="mailto:contact@nodefeeds.com">contact@nodefeeds.com</a></p>
+      <p><strong>X (Twitter):</strong> <a href="https://x.com/nodefeeds" target="_blank">@nodefeeds</a></p>
+      <h2>Content corrections</h2>
+      <p>If you spot a factual error in an article, please email us with the article URL and the correction. We take accuracy seriously and will update articles promptly.</p>
+      <h2>Advertising</h2>
+      <p>NodeFeeds is monetised exclusively through Google AdSense. We do not accept sponsored content, paid placements, or affiliate arrangements.</p>
+    </div>
+  </article>`;
+  res.send(layout('Contact', body, { description: 'Contact NodeFeeds — corrections, feedback, and enquiries.' }));
+});
+
+app.get('/about', (req, res) => {
+  const count = db.getCount();
+  const cats = db.getCategories();
+  const body = `
+  <article class="article-page">
+    <div class="article-header">
+      <h1>About NodeFeeds</h1>
+    </div>
+    <div class="article-body">
+      <p><strong>NodeFeeds</strong> is an independent AI & tech intelligence magazine publishing fresh articles every 6 hours, 24 hours a day. Every article is researched using live web search and written by Claude AI — one of the most capable large language models available today.</p>
+
+      <h2>Our mission</h2>
+      <p>To keep curious people informed about the fast-moving world of artificial intelligence, technology, productivity, space exploration, cybersecurity, and crypto — without the noise, hype, or paywalls that dominate mainstream tech media.</p>
+      <p>We believe good journalism should be accessible, accurate, and timely. NodeFeeds publishes ${count} articles and counting, covering ${cats.length} categories across the tech landscape.</p>
+
+      <h2>How it works</h2>
+      <p>Every 6 hours, our system selects a topic from a curated pool of tech categories. Claude AI then searches the live web for the latest developments, synthesises information from multiple sources, and writes a structured editorial article complete with citations and references.</p>
+      <p>Articles are reviewed against recent publications to prevent repetition, and each one includes a references section linking back to original sources. Images are generated uniquely per article using Pollinations AI.</p>
+
+      <h2>Editorial standards</h2>
+      <ul>
+        <li>Every factual claim includes a citation to the original source</li>
+        <li>Articles are structured for readability — short paragraphs, clear headings, key takeaways</li>
+        <li>No sponsored content, no paid placements, no affiliate links</li>
+        <li>Corrections are made promptly when errors are identified</li>
+        <li>We do not repeat the same topic within 30 days unless the story has substantially developed</li>
+      </ul>
+
+      <h2>Publisher</h2>
+      <p><strong>Luis Matos</strong><br/>
+      Lisbon, Portugal<br/>
+      <a href="mailto:contact@nodefeeds.com">contact@nodefeeds.com</a><br/>
+      <a href="https://x.com/nodefeeds" target="_blank">@nodefeeds on X</a></p>
+
+      <h2>Technology</h2>
+      <div class="about-stats">
+        <div class="stat-box"><div class="stat-num">${count}</div><div class="stat-label">Articles published</div></div>
+        <div class="stat-box"><div class="stat-num">6h</div><div class="stat-label">Publishing cadence</div></div>
+        <div class="stat-box"><div class="stat-num">${cats.length}</div><div class="stat-label">Categories covered</div></div>
+        <div class="stat-box"><div class="stat-num">100%</div><div class="stat-label">Source-cited</div></div>
+      </div>
+      <p>Built with Node.js, hosted on Railway, powered by the Claude API with live web search. Source images generated by Pollinations AI.</p>
+
+      <h2>Legal</h2>
+      <p><a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Service</a> · <a href="/contact">Contact</a></p>
+    </div>
+  </article>`;
+  res.send(layout('About NodeFeeds', body, { description: 'NodeFeeds is an independent AI & tech intelligence magazine publishing fresh articles every 6 hours.' }));
 });
 
 // RSS
