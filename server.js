@@ -517,7 +517,7 @@ app.get('/privacy', (req, res) => {
       <p>We may update this policy from time to time. Changes will be posted on this page with an updated date.</p>
 
       <h2>Contact</h2>
-      <p>For privacy-related questions: <a href="mailto:contact@nodefeeds.com">contact@nodefeeds.com</a></p>
+      <p>For privacy-related questions: <a href="mailto:nodefeeds@outlook.com">nodefeeds@outlook.com</a></p>
     </div>
   </article>`;
   res.send(layout('Privacy Policy', body, { description: 'NodeFeeds Privacy Policy — how we collect and use data.' }));
@@ -556,7 +556,7 @@ app.get('/terms', (req, res) => {
       <p>These terms are governed by the laws of Portugal and the European Union.</p>
 
       <h2>Contact</h2>
-      <p>Questions about these terms: <a href="mailto:contact@nodefeeds.com">contact@nodefeeds.com</a></p>
+      <p>Questions about these terms: <a href="mailto:nodefeeds@outlook.com">nodefeeds@outlook.com</a></p>
     </div>
   </article>`;
   res.send(layout('Terms of Service', body, { description: 'NodeFeeds Terms of Service.' }));
@@ -572,7 +572,7 @@ app.get('/contact', (req, res) => {
       <p>NodeFeeds is an independent AI & tech intelligence publication based in Portugal.</p>
       <h2>Get in touch</h2>
       <p>For general enquiries, corrections, or feedback:</p>
-      <p><strong>Email:</strong> <a href="mailto:contact@nodefeeds.com">contact@nodefeeds.com</a></p>
+      <p><strong>Email:</strong> <a href="mailto:nodefeeds@outlook.com">nodefeeds@outlook.com</a></p>
       <p><strong>X (Twitter):</strong> <a href="https://x.com/nodefeeds" target="_blank">@nodefeeds</a></p>
       <h2>Content corrections</h2>
       <p>If you spot a factual error in an article, please email us with the article URL and the correction. We take accuracy seriously and will update articles promptly.</p>
@@ -614,7 +614,7 @@ app.get('/about', (req, res) => {
       <h2>Publisher</h2>
       <p><strong>Luis Matos</strong><br/>
       Lisbon, Portugal<br/>
-      <a href="mailto:contact@nodefeeds.com">contact@nodefeeds.com</a><br/>
+      <a href="mailto:nodefeeds@outlook.com">nodefeeds@outlook.com</a><br/>
       <a href="https://x.com/nodefeeds" target="_blank">@nodefeeds on X</a></p>
 
       <h2>Technology</h2>
