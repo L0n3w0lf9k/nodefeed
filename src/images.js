@@ -12,7 +12,7 @@ if (!fs.existsSync(IMAGES_DIR)) {
 }
 
 // Build a highly specific, relevant prompt for each article
-function buildImagePrompt(title, category, excerpt = '') {
+function buildImagePrompt(title, category) {
   const styleByCategory = {
     'AI Tools':        'glowing neural network interface, blue green neon, dark tech background, digital nodes connecting',
     'Productivity':    'clean minimal workspace, soft natural light, modern desk, laptop open, coffee, focused atmosphere',
@@ -29,13 +29,10 @@ function buildImagePrompt(title, category, excerpt = '') {
 
   const style = styleByCategory[category] || 'technology concept, cinematic, dark background, professional';
 
-  // Extract key subject from title — first 6 words tend to be most specific
-  const titleSubject = title.split(' ').slice(0, 6).join(' ');
+  // Keep prompt short — long prompts cause Pollinations timeouts
+  const titleSubject = title.split(' ').slice(0, 5).join(' ');
 
-  // Use excerpt for additional context if available
-  const context = excerpt ? `, ${excerpt.split('.').slice(0, 2).join('.')}` : '';
-
-  return `${titleSubject}${context}, ${style}, editorial magazine cover photography, ultra realistic, 4k, professional, award winning photo`;
+  return `${titleSubject}, ${style}, 4k editorial photo`;
 }
 
 // Download image from Pollinations new API endpoint
@@ -86,8 +83,8 @@ async function downloadAndSave(url, slug, title, category, suffix = '') {
   return null;
 }
 
-async function generateAndSaveImage(slug, title, category, excerpt = '') {
-  const prompt = buildImagePrompt(title, category, excerpt);
+async function generateAndSaveImage(slug, title, category) {
+  const prompt = buildImagePrompt(title, category);
   const seed = Math.abs(slug.split('').reduce((a, c) => a + c.charCodeAt(0), 0));
 
   // New Pollinations API endpoint

@@ -146,14 +146,10 @@ async function generateArticle() {
   console.log(`[NodeFeeds] Generating: "${chosenTopic}" (${category})`);
 
   try {
-	const response = await client.messages.create({
-	  model: 'claude-sonnet-4-20250514',
-	  max_tokens: 16000,
-	  thinking: {
-		type: 'enabled',
-		budget_tokens: 10000
-	  },
-	  tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+    const response = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 4000,
+      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
       system: `You are a sharp, knowledgeable tech journalist writing for NodeFeeds — an independent AI & tech intelligence magazine.
 Your writing is clear, insightful, genuinely useful, and engaging. You avoid hype and fluff.
 You MUST use web_search to find real, current information before writing.
@@ -181,17 +177,17 @@ Return ONLY a JSON object with exactly these fields (no markdown fences, no prea
       }]
     });
 
-	const textContent = response.content
-	  .filter(b => b.type === 'text')
-	  .map(b => b.text)
-	  .join('');
+    const textContent = response.content
+      .filter(b => b.type === 'text')
+      .map(b => b.text)
+      .join('');
 
-	if (!textContent.trim()) throw new Error('Empty response from Claude');
+    if (!textContent.trim()) throw new Error('Empty response from Claude');
 
-	const jsonMatch = textContent.match(/\{[\s\S]*\}/);
-	if (!jsonMatch) throw new Error('No JSON found: ' + textContent.slice(0, 100));
+    const jsonMatch = textContent.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON found: ' + textContent.slice(0, 100));
 
-	const article = JSON.parse(jsonMatch[0].trim());
+    const article = JSON.parse(jsonMatch[0].trim());
 
     if (!article.title || !article.content || !article.excerpt) {
       throw new Error('Missing required article fields');
@@ -209,7 +205,7 @@ Return ONLY a JSON object with exactly these fields (no markdown fences, no prea
 
     // Generate and save image to Volume
     console.log(`[NodeFeeds] Generating image...`);
-    const image = await generateAndSaveImage(slug, article.title, article.category, article.excerpt);
+    const image = await generateAndSaveImage(slug, article.title, article.category);
 
     const saved = db.insertArticle({
       slug,
