@@ -162,14 +162,14 @@ Write for a smart, busy audience who wants signal not noise.`,
 IMPORTANT: These topics have been covered recently — do NOT repeat them or write something too similar:
 ${recentTitles || '(none yet)'}
 
-Find a fresh, specific angle that hasn't been covered. Then write a complete magazine article for NodeFeeds.
+Find a fresh, specific angle that hasn't been covered. Then write a complete SEO-optimised magazine article for NodeFeeds.
 
 Return ONLY a JSON object with exactly these fields (no markdown fences, no preamble):
 {
-  "title": "compelling, specific article title (max 80 chars)",
+  "title": "SEO-optimised title: specific, keyword-rich, compelling, under 60 chars, no clickbait",
   "category": "${category}",
-  "excerpt": "2 punchy sentences summarising the article (max 160 chars)",
-  "content": "full article in markdown (700-1000 words). Use ## for subheadings. Include real product names, real data, real quotes where found. End with a practical takeaway section."
+  "excerpt": "Meta description style: 1-2 sentences, includes primary keyword, under 155 chars, tells reader exactly what they'll learn",
+  "content": "Full article in markdown, 900-1200 words structured as follows:\n\n## [Keyword-rich intro heading]\nHook paragraph: start with a surprising fact, stat, or question. State clearly what the article covers and why it matters NOW.\n\n## [Section 2 heading with keyword]\nDetailed section with real data, product names, version numbers, prices where relevant.\n\n## [Section 3 heading]\nDetailed section. Include a real quote from a founder, researcher or industry figure if found.\n\n## [Section 4 heading]\nDetailed section. Use bullet points or numbered lists where it aids readability.\n\n## Key Takeaways\n3-5 bullet points summarising the most actionable insights for the reader.\n\nWriting rules:\n- Short paragraphs (2-4 sentences max)\n- Use **bold** for key terms on first use\n- Include specific numbers, percentages, dates\n- Write at 8th grade reading level\n- Active voice throughout\n- No filler phrases like 'In conclusion' or 'It is worth noting'\n- Each section must add new information, not repeat previous sections"
 }`
       }]
     });

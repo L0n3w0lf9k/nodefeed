@@ -6,6 +6,7 @@ const { marked } = require('marked');
 const RSS = require('rss');
 const db = require('./src/db');
 const { generateArticle } = require('./src/generator');
+const { generateAndSaveImage, listSavedImages } = require('./src/images');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -400,6 +401,26 @@ app.get('/about', (req, res) => {
   res.send(layout('About NodeFeeds', body));
 });
 
+// Debug route — check image status
+app.get('/admin/images', (req, res) => {
+  const articles = db.getArticles(100);
+  const savedFiles = new Set(listSavedImages());
+  const rows = articles.map(a => {
+    const filename = a.image_url ? a.image_url.replace('/images/', '') : null;
+    const onDisk = filename ? savedFiles.has(filename) : false;
+    return `<tr style="color:${onDisk ? '#00c882' : '#f55b5b'}">
+      <td style="padding:4px 8px">${a.title.slice(0,50)}</td>
+      <td style="padding:4px 8px">${a.image_url || 'NONE'}</td>
+      <td style="padding:4px 8px">${onDisk ? '✓ On disk' : '✗ Missing'}</td>
+    </tr>`;
+  }).join('');
+  res.send(`<html><body style="background:#0a0a0f;color:#f0f0f0;font-family:monospace;padding:2rem">
+    <h2>Image Status (${savedFiles.size} files on disk)</h2>
+    <p>Images dir: ${IMAGES_DIR}</p>
+    <table border="0" cellpadding="0" cellspacing="0">${rows}</table>
+  </body></html>`);
+});
+
 // Ads.txt — required by Google AdSense
 app.get('/ads.txt', (req, res) => {
   res.setHeader('Content-Type', 'text/plain');
@@ -456,6 +477,24 @@ async function start() {
       await generateArticle();
     } else {
       console.log(`[NodeFeeds] ${count} articles loaded.`);
+      // Repair missing images in background — don't block startup
+      const missing = db.getArticlesWithoutImages(50);
+      if (missing.length > 0) {
+        console.log(`[NodeFeeds] Found ${missing.length} articles without images — repairing in background...`);
+        (async () => {
+          for (const article of missing) {
+            const image = await generateAndSaveImage(article.slug, article.title, article.category);
+            if (image) {
+              db.updateArticleImage(article.slug, image);
+              console.log(`[NodeFeeds] ✓ Repaired image for: "${article.title}"`);
+            }
+            await new Promise(r => setTimeout(r, 4000));
+          }
+          console.log('[NodeFeeds] Image repair complete.');
+        })();
+      } else {
+        console.log('[NodeFeeds] All articles have images ✓');
+      }
     }
   });
 }

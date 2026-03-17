@@ -116,6 +116,20 @@ module.exports = {
   getMostViewed(limit = 5) {
     return queryAll('SELECT * FROM articles ORDER BY views DESC LIMIT ?', [limit]);
   },
+  updateArticleImage(slug, image) {
+    run(
+      'UPDATE articles SET image_url=?, image_thumb=?, image_alt=?, image_credit=?, image_credit_url=?, image_source=? WHERE slug=?',
+      [image.url, image.thumb, image.alt, image.credit, image.creditUrl, image.source, slug]
+    );
+  },
+
+  getArticlesWithoutImages(limit = 50) {
+    return queryAll(
+      "SELECT slug, title, category, excerpt FROM articles WHERE image_url IS NULL OR image_url = '' ORDER BY created_at DESC LIMIT ?",
+      [limit]
+    );
+  },
+
   getRecentArticles(days = 30) {
     return queryAll(
       "SELECT slug, title, excerpt, category FROM articles WHERE created_at >= datetime('now', ? || ' days') ORDER BY created_at DESC",

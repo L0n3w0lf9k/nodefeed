@@ -3,60 +3,72 @@ const fetch = require('node-fetch');
 const fs = require('fs');
 const path = require('path');
 
-// Images stored in the Railway Volume alongside the database
 const VOLUME_PATH = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, '..', 'data');
 const IMAGES_DIR = path.join(VOLUME_PATH, 'images');
 
 if (!fs.existsSync(IMAGES_DIR)) {
   fs.mkdirSync(IMAGES_DIR, { recursive: true });
+  console.log('[Images] Created images directory:', IMAGES_DIR);
 }
 
-// Build a Pollinations prompt tailored to the article
+const STYLE_BY_CATEGORY = {
+  'AI Tools':        'glowing neural network interface, blue green neon lights, dark tech background, digital nodes',
+  'Productivity':    'clean minimal workspace, soft natural light, modern desk setup, laptop coffee notebook',
+  'Gadgets':         'dramatic product photography, dark studio background, cinematic lighting, consumer electronics',
+  'Automation':      'robotic arms and circuits, futuristic factory floor, neon blue industrial lighting',
+  'AI News':         'abstract artificial intelligence, digital brain concept, glowing data streams, dark background',
+  'Future of Work':  'futuristic office space, holographic displays, diverse people collaborating with technology',
+  'Developer Tools': 'dark terminal screen with glowing green code, keyboard close up, developer workspace',
+  'Tech Reviews':    'clean product shot on dark background, dramatic side lighting, premium feel',
+  'Space Tech':      'dramatic nebula and stars, rocket launch, ISS in orbit, NASA mission control',
+  'Cybersecurity':   'dark matrix code, red warning alerts, digital lock and shield, hacker silhouette',
+  'Crypto & Web3':   'golden bitcoin coins, blockchain network visualization, dark financial background',
+};
+
 function buildImagePrompt(title, category) {
-  const styleByCategory = {
-    'AI Tools':        'glowing neural network interface, dark tech aesthetic, blue green light rays',
-    'Productivity':    'clean minimal workspace, soft light, modern office, top down view',
-    'Gadgets':         'product photography, dark background, dramatic lighting, tech device',
-    'Automation':      'robotic gears and circuits, futuristic factory, neon blue lights',
-    'AI News':         'abstract artificial intelligence, digital brain, dark background, glowing nodes',
-    'Future of Work':  'futuristic office, holographic displays, people working with AI',
-    'Developer Tools': 'code on dark screen, terminal, matrix style, green text',
-    'Tech Reviews':    'clean product shot, dramatic lighting, dark background',
-    'Space Tech':      'dramatic space photography, stars nebula planets, NASA style',
-    'Cybersecurity':   'dark hacker aesthetic, binary code, red warning lights, shield',
-    'Crypto & Web3':   'blockchain nodes, gold bitcoin, dark background, digital finance',
-  };
-
-  const style = styleByCategory[category] || 'technology abstract, dark background, cinematic';
-  return `${title}, ${style}, editorial magazine photography, ultra realistic, 4k, professional`;
+  const style = STYLE_BY_CATEGORY[category] || 'technology abstract, cinematic, dark background';
+  return `${title}, ${style}, ultra realistic editorial magazine photography, 4k, professional, award winning`;
 }
 
-// Download image from Pollinations and save to Volume
 async function generateAndSaveImage(slug, title, category) {
   const prompt = buildImagePrompt(title, category);
   const seed = Math.abs(slug.split('').reduce((a, c) => a + c.charCodeAt(0), 0));
-  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1200&height=630&seed=${seed}&nologo=true&model=flux`;
+  const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1200&height=630&seed=${seed}&nologo=true&model=flux`;
 
-  console.log(`[Images] Generating AI image for: "${title}"`);
+  console.log(`[Images] Requesting Pollinations image...`);
+  console.log(`[Images] Prompt: ${prompt.slice(0, 80)}...`);
+  console.log(`[Images] URL: ${url.slice(0, 100)}...`);
 
   try {
-    // Pollinations can be slow — give it 30 seconds
-    const res = await fetch(pollinationsUrl, { timeout: 30000 });
+    const res = await fetch(url, { timeout: 45000 });
 
     if (!res.ok) {
-      throw new Error(`Pollinations returned ${res.status}`);
+      throw new Error(`Pollinations returned HTTP ${res.status}`);
     }
 
-    const contentType = res.headers.get('content-type') || 'image/jpeg';
+    const contentType = res.headers.get('content-type') || '';
+    console.log(`[Images] Response content-type: ${contentType}`);
+
+    if (!contentType.includes('image')) {
+      throw new Error(`Expected image, got: ${contentType}`);
+    }
+
     const ext = contentType.includes('png') ? 'png' : 'jpg';
     const filename = `${slug}.${ext}`;
     const filepath = path.join(IMAGES_DIR, filename);
 
-    // Save image buffer to disk
     const buffer = await res.buffer();
-    fs.writeFileSync(filepath, buffer);
 
-    console.log(`[Images] ✓ Saved image: ${filename} (${Math.round(buffer.length / 1024)}kb)`);
+    if (buffer.length < 5000) {
+      throw new Error(`Image too small (${buffer.length} bytes) — likely an error response`);
+    }
+
+    fs.writeFileSync(filepath, buffer);
+    console.log(`[Images] ✓ Saved: ${filename} (${Math.round(buffer.length / 1024)}kb) at ${filepath}`);
+
+    // Verify file was actually written
+    const stat = fs.statSync(filepath);
+    console.log(`[Images] ✓ Verified on disk: ${stat.size} bytes`);
 
     return {
       url: `/images/${filename}`,
@@ -64,13 +76,24 @@ async function generateAndSaveImage(slug, title, category) {
       alt: title,
       credit: 'AI-generated image via Pollinations',
       creditUrl: 'https://pollinations.ai',
-      source: 'pollinations'
+      source: 'pollinations',
+      filename
     };
 
   } catch (e) {
-    console.error(`[Images] ✗ Failed to generate image:`, e.message);
+    console.error(`[Images] ✗ Failed:`, e.message);
     return null;
   }
 }
 
-module.exports = { generateAndSaveImage };
+// List all saved images on disk
+function listSavedImages() {
+  try {
+    const files = fs.readdirSync(IMAGES_DIR);
+    return files.filter(f => f.match(/\.(jpg|jpeg|png)$/i));
+  } catch (e) {
+    return [];
+  }
+}
+
+module.exports = { generateAndSaveImage, listSavedImages, IMAGES_DIR };
