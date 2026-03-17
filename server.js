@@ -83,7 +83,7 @@ function sitemap(articles) {
 // ── LAYOUT ───────────────────────────────────────────────────────────────────
 
 function layout(title, body, meta = {}) {
-  const { description, image, jsonLd } = meta;
+  const { description, image } = meta;
   const desc = description || 'AI & Tech Intelligence, Delivered Fresh — updated every 6 hours by Claude AI';
   const img = image || '';
   const cats = db.getCategories();
@@ -696,18 +696,16 @@ async function start() {
 
       // Repair articles missing images or with external URLs
       const allArts = db.getArticles(200);
-      const savedFiles2 = new Set(listSavedImages());
       const missing = allArts.filter(a => {
         if (!a.image_url) return true;
         if (a.image_url.startsWith('http')) return true;
-        const fn = a.image_url.replace('/images/', '');
-        return !savedFiles2.has(fn);
+        return false;
       });
 
       if (missing.length > 0) {
         console.log(`[NodeFeeds] Repairing ${missing.length} articles without images...`);
         for (const article of missing) {
-          const image = await generateAndSaveImage(article.slug, article.title, article.category);
+          const image = await generateAndSaveImage(article.slug, article.title, article.category, article.excerpt);
           if (image) {
             db.updateArticleImage(article.slug, image);
             console.log(`[NodeFeeds] ✓ Repaired: "${article.title}"`);

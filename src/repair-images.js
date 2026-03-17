@@ -18,9 +18,10 @@ async function repairImages() {
     if (!a.image_url) return true;
     // Missing if: image_url is an external URL (not a local /images/ path)
     if (a.image_url.startsWith('http')) return true;
-    // Missing if: local path but file doesn't exist on disk
-    const filename = a.image_url.replace('/images/', '');
-    return !savedFiles.has(filename);
+    
+    // We no longer check for the file on disk during automatic repairs
+    // to avoid false positives if the volume isn't ready or during deployments
+    return false;
   });
 
   console.log(`[Repair] ${missing.length} articles need images`);
@@ -35,7 +36,7 @@ async function repairImages() {
 
   for (const article of missing) {
     console.log(`\n[Repair] Processing: "${article.title}"`);
-    const image = await generateAndSaveImage(article.slug, article.title, article.category);
+    const image = await generateAndSaveImage(article.slug, article.title, article.category, article.excerpt);
 
     if (image) {
       db.updateArticleImage(article.slug, image);
