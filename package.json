@@ -1,6 +1,6 @@
 {
-  "name": "nodefeed",
-  "version": "1.0.0",
+  "name": "nodefeeds",
+  "version": "2.0.0",
   "description": "AI-powered tech news magazine — auto-generates articles every 6 hours",
   "main": "server.js",
   "scripts": {
@@ -16,7 +16,9 @@
     "marked": "^12.0.0",
     "slugify": "^1.6.6",
     "dotenv": "^16.4.5",
-    "rss": "^1.2.2"
+    "rss": "^1.2.2",
+    "twitter-api-v2": "^1.17.0",
+    "node-fetch": "^2.7.0"
   },
   "engines": {
     "node": ">=18.0.0"
