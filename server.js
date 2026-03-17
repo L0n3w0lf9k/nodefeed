@@ -400,6 +400,12 @@ app.get('/about', (req, res) => {
   res.send(layout('About NodeFeeds', body));
 });
 
+// Ads.txt — required by Google AdSense
+app.get('/ads.txt', (req, res) => {
+  res.setHeader('Content-Type', 'text/plain');
+  res.send(`google.com, ${ADSENSE_ID}, DIRECT, f08c47fec0942fa0`);
+});
+
 // RSS
 app.get('/feed.xml', (req, res) => {
   const articles = db.getArticles(20);
