@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="12" fill="#0a0a0f"/>
+  <circle cx="32" cy="32" r="28" stroke="#1a1a2a" stroke-width="1.5" fill="none"/>
+  <circle cx="32" cy="10" r="4" fill="#00c882"/>
+  <circle cx="54" cy="22" r="4" fill="#00c882" opacity=".7"/>
+  <circle cx="54" cy="42" r="4" fill="#00c882" opacity=".4"/>
+  <circle cx="32" cy="54" r="4" fill="#00c882" opacity=".3"/>
+  <circle cx="10" cy="42" r="4" fill="#00c882" opacity=".4"/>
+  <circle cx="10" cy="22" r="4" fill="#00c882" opacity=".7"/>
+  <line x1="32" y1="10" x2="54" y2="22" stroke="#00c882" stroke-width="1" opacity=".3"/>
+  <line x1="32" y1="10" x2="10" y2="22" stroke="#00c882" stroke-width="1" opacity=".3"/>
+  <line x1="54" y1="22" x2="54" y2="42" stroke="#00c882" stroke-width="1" opacity=".2"/>
+  <line x1="10" y1="22" x2="10" y2="42" stroke="#00c882" stroke-width="1" opacity=".2"/>
+  <circle cx="32" cy="32" r="6" fill="#00c882"/>
+  <circle cx="32" cy="32" r="10" stroke="#00c882" stroke-width="1" opacity=".2" fill="none"/>
+</svg>

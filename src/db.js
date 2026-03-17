@@ -2,10 +2,16 @@ const path = require('path');
 const fs = require('fs');
 const initSqlJs = require('sql.js');
 
-const dataDir = path.join(__dirname, '..', 'data');
+// Railway Volume mounts at /data by default — use that if available,
+// otherwise fall back to local ./data for local dev
+const dataDir = process.env.RAILWAY_VOLUME_MOUNT_PATH
+  ? process.env.RAILWAY_VOLUME_MOUNT_PATH
+  : path.join(__dirname, '..', 'data');
+
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
 const DB_PATH = path.join(dataDir, 'nodefeeds.db');
+console.log('[DB] Using database at:', DB_PATH);
 
 let db = null;
 
