@@ -243,6 +243,7 @@ function layout(title, body, meta = {}) {
 <meta property="og:type" content="${isArticle ? 'article' : 'website'}"/>
 
 <meta property="og:image" content="${fullImgUrl}"/>
+<meta property="og:image:url" content="${fullImgUrl}"/>
 <meta property="og:image:secure_url" content="${fullImgUrl}"/>
 <meta property="og:image:width" content="1200"/>
 <meta property="og:image:height" content="630"/>
@@ -250,6 +251,7 @@ function layout(title, body, meta = {}) {
 <meta property="og:image:alt" content="${title}"/>
 
 <link rel="image_src" href="${fullImgUrl}"/>
+<link rel="logo" href="${baseSiteUrl}/og-image.png"/>
 <meta itemprop="image" content="${fullImgUrl}"/>
 <meta name="image" content="${fullImgUrl}"/>
 
@@ -464,6 +466,15 @@ app.get('/', (req, res) => {
     "name": "NodeFeeds",
     "url": SITE_URL,
     "description": "Independent AI & tech intelligence, published automatically every 6 hours.",
+    "image": `${SITE_URL}/og-image.png`,
+    "publisher": {
+      "@type": "Organization",
+      "name": "NodeFeeds",
+      "logo": {
+        "@type": "ImageObject",
+        "url": `${SITE_URL}/og-image.png`
+      }
+    },
     "potentialAction": {
       "@type": "SearchAction",
       "target": `${SITE_URL}/search?q={search_term_string}`,
