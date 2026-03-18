@@ -65,77 +65,16 @@ async function postToX(article) {
 }
 
 // ── LINKEDIN ──────────────────────────────────────────────────────────────────
-// Auto-discovers your Person URN from the access token — no manual URN needed
-// Required env var: LINKEDIN_ACCESS_TOKEN only
+// Uses your Person URN from environment variable LINKEDIN_AUTHOR_URN
+// Required env vars: LINKEDIN_ACCESS_TOKEN and LINKEDIN_AUTHOR_URN
 
-let cachedLinkedInUrn = null;
-
-async function getLinkedInUrn(token) {
-  // Return cached URN if we already have it
-  if (cachedLinkedInUrn) return cachedLinkedInUrn;
-
-  // Try LINKEDIN_AUTHOR_URN env var first (manual override)
-  if (process.env.LINKEDIN_AUTHOR_URN) {
-    cachedLinkedInUrn = process.env.LINKEDIN_AUTHOR_URN;
-    console.log(`[LinkedIn] Using URN from env: ${cachedLinkedInUrn}`);
-    return cachedLinkedInUrn;
+async function getLinkedInUrn() {
+  const urn = process.env.LINKEDIN_AUTHOR_URN;
+  if (!urn) {
+    console.error('[LinkedIn] ✗ LINKEDIN_AUTHOR_URN is missing. Set it in your environment variables.');
+    return null;
   }
-
-  // Auto-discover from token — try multiple endpoints
-  const endpoints = [
-    { url: 'https://api.linkedin.com/v2/userinfo', idField: 'sub', prefix: 'urn:li:person:' },
-    { url: 'https://api.linkedin.com/v2/me', idField: 'id', prefix: 'urn:li:person:' },
-  ];
-
-  for (const ep of endpoints) {
-    try {
-      const res = await fetch(ep.url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'X-Restli-Protocol-Version': '2.0.0',
-          'LinkedIn-Version': '202401',
-        },
-        timeout: 10000,
-      });
-      if (!res.ok) continue;
-      const data = await res.json();
-      const id = data[ep.idField];
-      if (id) {
-        cachedLinkedInUrn = `${ep.prefix}${id}`;
-        console.log(`[LinkedIn] ✓ Auto-discovered URN: ${cachedLinkedInUrn}`);
-        return cachedLinkedInUrn;
-      }
-    } catch (e) {
-      console.log(`[LinkedIn] URN discovery failed for ${ep.url}: ${e.message}`);
-    }
-  }
-
-  // Last resort — try getting it from a token introspection
-  try {
-    const res = await fetch('https://api.linkedin.com/v2/introspectToken', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        token,
-        client_id: process.env.LINKEDIN_CLIENT_ID || '',
-        client_secret: process.env.LINKEDIN_CLIENT_SECRET || '',
-      }),
-      timeout: 10000,
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.auth_type && data.authorized_at) {
-        // Token introspection doesn't return member ID directly
-        // but confirms token is valid
-        console.log('[LinkedIn] Token is valid but could not auto-discover URN');
-      }
-    }
-  } catch (e) {}
-
-  console.error('[LinkedIn] ✗ Could not auto-discover Person URN. Set LINKEDIN_AUTHOR_URN manually in Railway Variables.');
-  return null;
+  return urn;
 }
 
 async function postToLinkedIn(article) {
@@ -145,7 +84,7 @@ async function postToLinkedIn(article) {
     return null;
   }
 
-  const author = await getLinkedInUrn(token);
+  const author = await getLinkedInUrn();
   if (!author) return null;
 
   const url = `${SITE_URL}/article/${article.slug}`;

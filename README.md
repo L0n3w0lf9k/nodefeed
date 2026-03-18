@@ -30,57 +30,6 @@ NodeFeed is an independent tech publication where every article is researched, w
 
 ---
 
-## 🚀 Getting Started
-
-### 1. Installation
-
-```bash
-git clone https://github.com/YOUR_USERNAME/nodefeed.git
-cd nodefeed
-npm install
-```
-
-### 2. Configuration
-
-Create a `.env` file in the root directory (see `.env.example`):
-
-```env
-# Core API
-ANTHROPIC_API_KEY=your_key_here
-
-# Site Info
-SITE_URL=https://nodefeeds.com
-SITE_NAME=NodeFeeds
-ADSENSE_PUBLISHER_ID=pub-xxxxxxxxxxxxxxxx
-
-# Socials (Optional)
-X_API_KEY=...
-X_API_SECRET=...
-X_ACCESS_TOKEN=...
-X_ACCESS_TOKEN_SECRET=...
-
-LINKEDIN_ACCESS_TOKEN=...
-LINKEDIN_AUTHOR_URN=...
-```
-
-### 3. Usage
-
-**Start the web server:**
-```bash
-npm start
-```
-
-**Generate an article manually (CLI):**
-```bash
-npm run generate
-```
-
-**Repair missing images:**
-```bash
-npm run repair-images
-```
-
----
 
 ## 🏗 Architecture
 
@@ -103,4 +52,4 @@ NodeFeed is designed to be self-healing and low-maintenance:
 
 ## 📄 License
 
-MIT © [Your Name/NodeFeeds]
+MIT © [Luis Matos/NodeFeeds]

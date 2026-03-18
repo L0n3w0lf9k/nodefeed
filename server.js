@@ -21,6 +21,7 @@ const rssParser = new RSSParser({
 
 // ── NEWS CACHE ────────────────────────────────────────────────────────────────
 const NEWS_SOURCES = [
+  // Original sources
   { name: 'TechCrunch', url: 'https://techcrunch.com/feed/', color: '#00c882', logo: 'https://techcrunch.com/wp-content/uploads/2015/02/cropped-cropped-favicon-gradient.png' },
   { name: 'The Verge', url: 'https://www.theverge.com/rss/index.xml', color: '#fb7185', logo: 'https://cdn.vox-cdn.com/uploads/chorus_asset/file/7395367/android-chrome-192x192.png' },
   { name: 'Ars Technica', url: 'https://feeds.arstechnica.com/arstechnica/index', color: '#f5a623', logo: 'https://cdn.arstechnica.net/wp-content/uploads/2016/10/cropped-ars-logo-512_480-32x32.png' },
@@ -28,7 +29,13 @@ const NEWS_SOURCES = [
   { name: 'MIT Tech Review', url: 'https://www.technologyreview.com/feed/', color: '#a78bfa', logo: 'https://www.technologyreview.com/favicon.ico' },
   { name: 'VentureBeat', url: 'https://venturebeat.com/feed/', color: '#fbbf24', logo: 'https://venturebeat.com/wp-content/themes/vb-news/img/favicon.ico' },
   { name: 'BBC Technology', url: 'https://feeds.bbci.co.uk/news/technology/rss.xml', color: '#5bf5c0', logo: 'https://static.files.bbci.co.uk/core/website/assets/static/icons/favicon-32x32.png' },
-  { name: 'Hacker News', url: 'https://hnrss.org/frontpage', color: '#f97316', logo: 'https://news.ycombinator.com/favicon.ico' },
+  { name: 'Engadget', url: 'https://www.engadget.com/rss.xml', color: '#ff0070', logo: 'https://www.engadget.com/favicon.ico' },
+  { name: 'ZDNet', url: 'https://www.zdnet.com/news/rss.xml', color: '#e63946', logo: 'https://www.zdnet.com/favicon.ico' },
+  { name: 'CNET', url: 'https://www.cnet.com/rss/news/', color: '#e8c22e', logo: 'https://www.cnet.com/favicon.ico' },
+  { name: 'The Guardian', url: 'https://www.theguardian.com/technology/rss', color: '#00b2ff', logo: 'https://assets.guim.co.uk/images/favicons/32x32.ico' },
+  { name: 'Hacker News (New)', url: 'https://hnrss.org/newest?points=50', color: '#fb923c', logo: 'https://news.ycombinator.com/favicon.ico' },
+  { name: 'MacRumors', url: 'https://feeds.macrumors.com/MacRumors-All', color: '#888888', logo: 'https://www.macrumors.com/favicon.ico' },
+  { name: 'The Hacker News', url: 'https://feeds.feedburner.com/TheHackersNews', color: '#ff3e3e', logo: 'https://thehackernews.com/favicon.ico' },
 ];
 
 let newsCache = { items: [], fetchedAt: null };
@@ -180,7 +187,7 @@ function layout(title, body, meta = {}) {
   const currentPath = meta.path || '';
   // Ensure SITE_URL doesn't have a trailing slash for consistent concatenation
   const baseSiteUrl = SITE_URL.endsWith('/') ? SITE_URL.slice(0, -1) : SITE_URL;
-  
+
   // Resolve absolute image URL
   let fullImgUrl = `${baseSiteUrl}/og-image.png`;
   if (image) {
@@ -234,6 +241,7 @@ function layout(title, body, meta = {}) {
 <title>${title} — ${SITE_NAME}</title>
 <meta name="description" content="${desc}"/>
 <link rel="canonical" href="${canonicalUrl}" />
+<meta name="view-transition" content="same-origin" />
 
 <!-- Open Graph / Social Media -->
 <meta property="og:site_name" content="${SITE_NAME}"/>
@@ -1096,7 +1104,7 @@ async function start() {
         await generateArticle();
       }
 
-// Fetch initial news cache
+      // Fetch initial news cache
       fetchNews().catch(e => console.error('[News] Initial fetch failed:', e.message));
 
       // Repair articles missing images or with external URLs
