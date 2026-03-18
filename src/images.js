@@ -13,56 +13,60 @@ if (!fs.existsSync(IMAGES_DIR)) {
 
 // Build a highly specific, relevant prompt for each article
 function buildImagePrompt(title) {
-  // Use article title directly — gives Pollinations full context
-  const prefix = 'Generate cover for tech article: ';
-  const suffix = ', technology - futuristic';
-  const maxTitle = 250;
-  const safeTitle = title.length <= maxTitle ? title : title.slice(0, maxTitle - 3);
-  return prefix + safeTitle + suffix;
+  // Shorter, cleaner prompt for better stability
+  const prefix = 'Generate tech article cover for: ';
+  const safeTitle = title.length > 250 ? title.slice(0, 250) : title;
+  return prefix + safeTitle + ', futuristic technology';
 }
 
-// Download image from Pollinations new API endpoint
-async function downloadAndSave(url, slug, title, category, suffix = '') {
+function getPollinationsUrl(baseUrl, prompt, seed, model) {
+  const modelParam = model ? `&model=${model}` : '';
+  return `${baseUrl}/${encodeURIComponent(prompt)}?width=1200&height=630&seed=${seed}&nologo=true${modelParam}`;
+}
+
+async function tryFetchImage(url, API_KEY) {
+  const headers = { 'User-Agent': 'NodeFeeds/1.0' };
+  if (API_KEY) headers['Authorization'] = `Bearer ${API_KEY}`;
+
+  const res = await fetch(url, { timeout: 180000, headers });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+  const contentType = res.headers.get('content-type') || '';
+  if (!contentType.includes('image')) throw new Error(`Expected image, got: ${contentType}`);
+
+  return { buffer: await res.buffer(), ext: contentType.includes('png') ? 'png' : 'jpg' };
+}
+
+// Download image from Pollinations with support for optional API key and model fallback
+async function downloadAndSave(prompt, seed, slug, title, category, suffix = '') {
   const MAX_RETRIES = 3;
+  const API_KEY = process.env.POLLINATIONS_API_KEY;
+  // If we have a key, prioritize Flux (highest quality). Otherwise Turbo (most stable).
+  const models = API_KEY ? ['flux', 'turbo', ''] : ['turbo', 'flux', ''];
+  const baseUrl = API_KEY ? 'https://gen.pollinations.ai/image' : 'https://image.pollinations.ai/prompt';
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       if (attempt > 1) {
-        const wait = attempt * 6000;
+        const wait = attempt * 5000;
         console.log(`[Images] Retry ${attempt}/${MAX_RETRIES} in ${wait / 1000}s...`);
         await new Promise(r => setTimeout(r, wait));
       }
 
-      console.log(`[Images] Fetching: ${url.slice(0, 100)}...`);
-      const res = await fetch(url, {
-        timeout: 60000,
-        headers: { 'User-Agent': 'NodeFeeds/1.0' }
-      });
+      const model = models[attempt - 1];
+      const url = getPollinationsUrl(baseUrl, prompt, seed, model);
 
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
+      console.log(`[Images] Fetching (${model || 'default'}): ${url.slice(0, 100)}...`);
+      const { buffer, ext } = await tryFetchImage(url, API_KEY);
 
-      const contentType = res.headers.get('content-type') || '';
-      if (!contentType.includes('image')) {
-        throw new Error(`Expected image, got: ${contentType}`);
-      }
-
-      const buffer = await res.buffer();
-      if (buffer.length < 5000) {
-        throw new Error(`Response too small (${buffer.length} bytes)`);
-      }
-
-      const ext = contentType.includes('png') ? 'png' : 'jpg';
       const filename = `${slug}${suffix}.${ext}`;
-      const filepath = path.join(IMAGES_DIR, filename);
-      fs.writeFileSync(filepath, buffer);
+      fs.writeFileSync(path.join(IMAGES_DIR, filename), buffer);
 
       console.log(`[Images] ✓ Saved: ${filename} (${Math.round(buffer.length / 1024)}kb)`);
       return filename;
 
     } catch (e) {
-      console.error(`[Images] Attempt ${attempt} failed:`, e.message);
+      console.error(`[Images] Attempt ${attempt} (${models[attempt-1] || 'default'}) failed:`, e.message);
       if (attempt === MAX_RETRIES) return null;
     }
   }
@@ -73,13 +77,11 @@ async function generateAndSaveImage(slug, title, category) {
   const prompt = buildImagePrompt(title);
   const seed = Math.abs(slug.split('').reduce((a, c) => a + c.charCodeAt(0), 0));
 
-  // New Pollinations API endpoint
-  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1200&height=630&seed=${seed}&nologo=true&model=flux&enhance=true`;
-
   console.log(`[Images] Generating for: "${title}"`);
-  console.log(`[Images] Prompt: ${prompt.slice(0, 100)}...`);
+  console.log(`[Images] Prompt: ${prompt}`);
 
-  const filename = await downloadAndSave(pollinationsUrl, slug, title, category);
+  // Now passes prompt/seed for the internal retry logic builder
+  const filename = await downloadAndSave(prompt, seed, slug, title, category);
 
   if (filename) {
     return {

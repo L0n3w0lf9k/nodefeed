@@ -101,10 +101,19 @@ app.use(express.json());
 
 // ── REACTIONS ENDPOINT ────────────────────────────────────────────────────────
 app.post('/api/react', (req, res) => {
-  const { slug, emoji } = req.body;
+  const { slug, emoji, oldEmoji, action } = req.body;
   const allowed = ['👍', '🔥', '🤯', '💡', '😮'];
-  if (!slug || !allowed.includes(emoji)) return res.json({ ok: false });
-  db.addReaction(slug, emoji);
+  if (!slug) return res.json({ ok: false });
+
+  if (action === 'remove' && emoji) {
+    db.decrementReaction(slug, emoji);
+  } else if (oldEmoji && emoji) {
+    db.decrementReaction(slug, oldEmoji);
+    db.addReaction(slug, emoji);
+  } else if (emoji && allowed.includes(emoji)) {
+    db.addReaction(slug, emoji);
+  }
+
   const counts = db.getReactions(slug);
   res.json({ ok: true, counts });
 });
@@ -654,34 +663,49 @@ app.get('/article/:slug', (req, res) => {
         });
         // Restore user's previous reactions from localStorage
         const key = 'reacted_${article.slug}';
-        const reacted = JSON.parse(localStorage.getItem(key) || '[]');
-        reacted.forEach(e => {
-          const btn = document.querySelector('[data-emoji="' + e + '"]');
+        const reactedEmoji = localStorage.getItem(key);
+        if (reactedEmoji) {
+          const btn = document.querySelector('[data-emoji="' + reactedEmoji + '"]');
           if (btn) btn.classList.add('reacted');
-        });
+        }
       });
 
     function handleReact(btn) {
       const emoji = btn.dataset.emoji;
       const slug = btn.dataset.slug;
       const key = 'reacted_' + slug;
-      const reacted = JSON.parse(localStorage.getItem(key) || '[]');
-      if (reacted.includes(emoji)) return; // already reacted
+      const current = localStorage.getItem(key);
+
+      let body = { slug, emoji };
+      if (current === emoji) {
+        body.action = 'remove';
+      } else if (current) {
+        body.oldEmoji = current;
+      }
 
       fetch('/api/react', {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ slug, emoji })
+        body: JSON.stringify(body)
       })
       .then(r => r.json())
       .then(data => {
         if (data.ok) {
-          reacted.push(emoji);
-          localStorage.setItem(key, JSON.stringify(reacted));
-          btn.classList.add('reacted');
-          const cp = emoji.codePointAt(0);
-          const el = document.getElementById('rc-' + cp + '-' + slug);
-          if (el) el.textContent = data.counts[emoji] || 0;
+          if (body.action === 'remove') {
+            localStorage.removeItem(key);
+            btn.classList.remove('reacted');
+          } else {
+            localStorage.setItem(key, emoji);
+            document.querySelectorAll('.reaction-btn').forEach(b => b.classList.remove('reacted'));
+            btn.classList.add('reacted');
+          }
+          // Update all counts
+          ['👍', '🔥', '🤯', '💡', '😮'].forEach(e => {
+            const count = data.counts[e] || 0;
+            const cp = e.codePointAt(0);
+            const el = document.getElementById('rc-' + cp + '-' + slug);
+            if (el) el.textContent = count;
+          });
         }
       });
     }
@@ -1098,16 +1122,23 @@ app.get('/feed.xml', (req, res) => {
     feed_url: `${SITE_URL}/feed.xml`,
     site_url: SITE_URL,
     language: 'en',
-    image_url: `${SITE_URL}/images/logo.png`
+    image_url: `${SITE_URL}/images/logo.png`,
+    custom_namespaces: {
+      'content': 'http://purl.org/rss/1.0/modules/content/'
+    }
   });
   articles.forEach(a => {
     feed.item({
       title: a.title,
       description: a.excerpt,
       url: `${SITE_URL}/article/${a.slug}`,
+      guid: a.slug,
       categories: [a.category],
-      date: a.created_at,
-      enclosure: a.image_url ? { url: a.image_url } : undefined
+      date: new Date(a.created_at),
+      enclosure: a.image_url ? { url: `${SITE_URL}${a.image_url}`, type: 'image/jpeg' } : undefined,
+      custom_elements: [
+        { 'content:encoded': { _cdata: a.content } }
+      ]
     });
   });
   res.set('Content-Type', 'application/rss+xml');

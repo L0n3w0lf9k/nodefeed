@@ -150,6 +150,12 @@ module.exports = {
       [slug, emoji]
     );
   },
+  decrementReaction(slug, emoji) {
+    run(
+      'UPDATE reactions SET count = MAX(0, count - 1) WHERE slug = ? AND emoji = ?',
+      [slug, emoji]
+    );
+  },
 
   getReactions(slug) {
     const rows = queryAll('SELECT emoji, count FROM reactions WHERE slug=?', [slug]);
