@@ -246,6 +246,8 @@ function layout(title, body, meta = {}) {
 <meta property="og:image:type" content="${fullImgUrl.endsWith('.png') ? 'image/png' : 'image/jpeg'}"/>
 <meta property="og:image:alt" content="${title}"/>
 <meta property="og:site_name" content="${SITE_NAME}"/>
+<link rel="image_src" href="${fullImgUrl}"/>
+<meta itemprop="image" content="${fullImgUrl}"/>
 
 <!-- Twitter -->
 <meta name="twitter:card" content="summary_large_image"/>
