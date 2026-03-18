@@ -172,7 +172,7 @@ function sitemap(articles) {
 function layout(title, body, meta = {}) {
   const { description, image } = meta;
   const desc = description || 'AI & Tech Intelligence, Delivered Fresh — updated every 6 hours by Claude AI';
-  const img = image || '';
+  const img = image || `${SITE_URL}/og-image.svg`;
   const cats = db.getCategories();
   const popular = db.getMostViewed(4);
   const latest = db.getArticles(3);
