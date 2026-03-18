@@ -239,6 +239,10 @@ function layout(title, body, meta = {}) {
 <meta property="og:title" content="${title} — ${SITE_NAME}"/>
 <meta property="og:description" content="${desc}"/>
 <meta property="og:image" content="${fullImgUrl}"/>
+<meta property="og:image:secure_url" content="${fullImgUrl}"/>
+<meta property="og:image:width" content="1200"/>
+<meta property="og:image:height" content="630"/>
+<meta property="og:image:type" content="${fullImgUrl.endsWith('.png') ? 'image/png' : 'image/jpeg'}"/>
 <meta property="og:image:alt" content="${title}"/>
 <meta property="og:site_name" content="${SITE_NAME}"/>
 
