@@ -226,9 +226,10 @@ function layout(title, body, meta = {}) {
     </a>`).join('');
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" prefix="og: https://ogp.me/ns#">
 <head>
 <meta charset="UTF-8"/>
+<!-- og:type debug: ${isArticle ? 'article' : 'website'} -->
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>${title} — ${SITE_NAME}</title>
 <meta name="description" content="${desc}"/>
