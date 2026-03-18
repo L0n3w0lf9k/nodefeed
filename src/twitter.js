@@ -65,24 +65,91 @@ async function postToX(article) {
 }
 
 // ── LINKEDIN ──────────────────────────────────────────────────────────────────
-// Uses LinkedIn Share API v2
-// Required env vars:
-//   LINKEDIN_ACCESS_TOKEN  — Personal access token from LinkedIn Developer Portal
-//   LINKEDIN_AUTHOR_URN    — Your LinkedIn person URN e.g. urn:li:person:XXXXXXXX
+// Auto-discovers your Person URN from the access token — no manual URN needed
+// Required env var: LINKEDIN_ACCESS_TOKEN only
+
+let cachedLinkedInUrn = null;
+
+async function getLinkedInUrn(token) {
+  // Return cached URN if we already have it
+  if (cachedLinkedInUrn) return cachedLinkedInUrn;
+
+  // Try LINKEDIN_AUTHOR_URN env var first (manual override)
+  if (process.env.LINKEDIN_AUTHOR_URN) {
+    cachedLinkedInUrn = process.env.LINKEDIN_AUTHOR_URN;
+    console.log(`[LinkedIn] Using URN from env: ${cachedLinkedInUrn}`);
+    return cachedLinkedInUrn;
+  }
+
+  // Auto-discover from token — try multiple endpoints
+  const endpoints = [
+    { url: 'https://api.linkedin.com/v2/userinfo', idField: 'sub', prefix: 'urn:li:person:' },
+    { url: 'https://api.linkedin.com/v2/me', idField: 'id', prefix: 'urn:li:person:' },
+  ];
+
+  for (const ep of endpoints) {
+    try {
+      const res = await fetch(ep.url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'X-Restli-Protocol-Version': '2.0.0',
+          'LinkedIn-Version': '202401',
+        },
+        timeout: 10000,
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const id = data[ep.idField];
+      if (id) {
+        cachedLinkedInUrn = `${ep.prefix}${id}`;
+        console.log(`[LinkedIn] ✓ Auto-discovered URN: ${cachedLinkedInUrn}`);
+        return cachedLinkedInUrn;
+      }
+    } catch (e) {
+      console.log(`[LinkedIn] URN discovery failed for ${ep.url}: ${e.message}`);
+    }
+  }
+
+  // Last resort — try getting it from a token introspection
+  try {
+    const res = await fetch('https://api.linkedin.com/v2/introspectToken', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        token,
+        client_id: process.env.LINKEDIN_CLIENT_ID || '',
+        client_secret: process.env.LINKEDIN_CLIENT_SECRET || '',
+      }),
+      timeout: 10000,
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.auth_type && data.authorized_at) {
+        // Token introspection doesn't return member ID directly
+        // but confirms token is valid
+        console.log('[LinkedIn] Token is valid but could not auto-discover URN');
+      }
+    }
+  } catch (e) {}
+
+  console.error('[LinkedIn] ✗ Could not auto-discover Person URN. Set LINKEDIN_AUTHOR_URN manually in Railway Variables.');
+  return null;
+}
 
 async function postToLinkedIn(article) {
   const token = process.env.LINKEDIN_ACCESS_TOKEN;
-  const author = process.env.LINKEDIN_AUTHOR_URN;
-
-  if (!token || !author) {
-    console.log('[LinkedIn] Missing credentials — skipping.');
+  if (!token) {
+    console.log('[LinkedIn] No access token — skipping.');
     return null;
   }
 
+  const author = await getLinkedInUrn(token);
+  if (!author) return null;
+
   const url = `${SITE_URL}/article/${article.slug}`;
   const tags = (HASHTAG_MAP[article.category] || ['#AI', '#Tech']).join(' ');
-
-  // Build a LinkedIn-style post — more professional tone than Twitter
   const postText = `${article.title}\n\n${article.excerpt}\n\nRead more: ${url}\n\n${tags}`;
 
   const body = {
@@ -104,7 +171,7 @@ async function postToLinkedIn(article) {
   };
 
   try {
-    console.log('[LinkedIn] Posting...');
+    console.log(`[LinkedIn] Posting as ${author}...`);
     const res = await fetch('https://api.linkedin.com/v2/ugcPosts', {
       method: 'POST',
       headers: {
@@ -118,7 +185,7 @@ async function postToLinkedIn(article) {
 
     if (!res.ok) {
       const err = await res.text();
-      throw new Error(`HTTP ${res.status}: ${err.slice(0, 200)}`);
+      throw new Error(`HTTP ${res.status}: ${err.slice(0, 300)}`);
     }
 
     const data = await res.json();
@@ -131,7 +198,7 @@ async function postToLinkedIn(article) {
   }
 }
 
-// ── MAIN EXPORT — posts to both platforms ────────────────────────────────────
+// ── MAIN EXPORT ───────────────────────────────────────────────────────────────
 async function postArticle(article) {
   const [xId, liId] = await Promise.all([
     postToX(article),
