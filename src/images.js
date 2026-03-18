@@ -14,10 +14,10 @@ if (!fs.existsSync(IMAGES_DIR)) {
 // Build a highly specific, relevant prompt for each article
 function buildImagePrompt(title) {
   // Use article title directly — gives Pollinations full context
-  const prefix = 'Generate cover picture for tech magazine article on - ';
-  const suffix = ', technology, futuristic';
-  const maxTitle = 250 - prefix.length - suffix.length;
-  const safeTitle = title.length <= maxTitle ? title : title.slice(0, maxTitle - 3) + '...';
+  const prefix = 'Generate cover for tech article: ';
+  const suffix = ', technology - futuristic';
+  const maxTitle = 250;
+  const safeTitle = title.length <= maxTitle ? title : title.slice(0, maxTitle - 3);
   return prefix + safeTitle + suffix;
 }
 
