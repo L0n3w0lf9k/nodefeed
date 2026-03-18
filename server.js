@@ -23,7 +23,7 @@ const rssParser = new RSSParser({
 const NEWS_SOURCES = [
   // Original sources
   { name: 'TechCrunch', url: 'https://techcrunch.com/feed/', color: '#00c882', logo: 'https://techcrunch.com/wp-content/uploads/2015/02/cropped-cropped-favicon-gradient.png' },
-  { name: 'The Verge', url: 'https://www.theverge.com/rss/index.xml', color: '#fb7185', logo: 'https://cdn.vox-cdn.com/uploads/chorus_asset/file/7395367/android-chrome-192x192.png' },
+  { name: 'The Verge', url: 'https://www.theverge.com/rss/index.xml', color: '#fb7185', logo: 'https://www.theverge.com/static-assets/icons/favicon.ico' },
   { name: 'Ars Technica', url: 'https://feeds.arstechnica.com/arstechnica/index', color: '#f5a623', logo: 'https://cdn.arstechnica.net/wp-content/uploads/2016/10/cropped-ars-logo-512_480-32x32.png' },
   { name: 'Wired', url: 'https://www.wired.com/feed/rss', color: '#5b8af5', logo: 'https://www.wired.com/favicon.ico' },
   { name: 'MIT Tech Review', url: 'https://www.technologyreview.com/feed/', color: '#a78bfa', logo: 'https://www.technologyreview.com/favicon.ico' },
@@ -570,31 +570,33 @@ app.get('/article/:slug', (req, res) => {
         ${tweetHtml}
       </div>
     </div>
+
+    <div class="engagement-container">
+      <div class="share-section">
+        <div class="share-label">// Share</div>
+        <div class="share-buttons">
+          <a href="https://x.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}" target="_blank" rel="noopener" class="share-btn share-x" title="Share on X">𝕏</a>
+          <a href="https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}" target="_blank" rel="noopener" class="share-btn share-li" title="Share on LinkedIn">in</a>
+          <a href="https://wa.me/?text=${encodedTitle}%20${encodedUrl}" target="_blank" rel="noopener" class="share-btn share-wa" title="Share on WhatsApp">wa</a>
+          <button onclick="navigator.clipboard.writeText('${articleUrl}').then(()=>{const icon=this.querySelector('span');const old=icon.textContent;icon.textContent='✓';setTimeout(()=>icon.textContent=old,2000)})" class="share-btn share-copy" title="Copy Link"><span>🔗</span></button>
+        </div>
+      </div>
+
+      <div class="reactions-section" id="reactions">
+        <div class="share-label">// React</div>
+        <div class="reaction-buttons">
+          ${['👍', '🔥', '🤯', '💡', '😮'].map(e => `
+          <button class="reaction-btn" data-emoji="${e}" data-slug="${article.slug}" onclick="handleReact(this)">
+            <span class="reaction-emoji">${e}</span>
+            <span class="reaction-count" id="rc-${e.codePointAt(0)}-${article.slug}">0</span>
+          </button>`).join('')}
+        </div>
+      </div>
+    </div>
+
     ${imgHtml}
     ${adUnit()}
     <div class="article-body">${safeContent}</div>
-    ${adUnit()}
-
-    <div class="share-section">
-      <div class="share-label">// Share this article</div>
-      <div class="share-buttons">
-        <a href="https://x.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}" target="_blank" rel="noopener" class="share-btn share-x">𝕏 Post</a>
-        <a href="https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}" target="_blank" rel="noopener" class="share-btn share-li">LinkedIn</a>
-        <a href="https://wa.me/?text=${encodedTitle}%20${encodedUrl}" target="_blank" rel="noopener" class="share-btn share-wa">WhatsApp</a>
-        <button onclick="navigator.clipboard.writeText('${articleUrl}').then(()=>{this.textContent='✓ Copied!';setTimeout(()=>this.textContent='Copy Link',2000)})" class="share-btn share-copy">Copy Link</button>
-      </div>
-    </div>
-
-    <div class="reactions-section" id="reactions">
-      <div class="share-label">// React to this article</div>
-      <div class="reaction-buttons">
-        ${['👍', '🔥', '🤯', '💡', '😮'].map(e => `
-        <button class="reaction-btn" data-emoji="${e}" data-slug="${article.slug}" onclick="handleReact(this)">
-          <span class="reaction-emoji">${e}</span>
-          <span class="reaction-count" id="rc-${e.codePointAt(0)}-${article.slug}">0</span>
-        </button>`).join('')}
-      </div>
-    </div>
 
     <div class="comments-section">
       <div class="share-label">// Discussion</div>
@@ -769,7 +771,7 @@ app.get('/admin/images', (req, res) => {
     const isExternal = a.image_url?.startsWith('http') || false;
     const filename = a.image_url && !isExternal ? a.image_url.replace('/images/', '') : null;
     const onDisk = filename ? savedFiles.has(filename) : false;
-    
+
     let status;
     if (!a.image_url) {
       status = '✗ No image';

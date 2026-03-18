@@ -41,6 +41,7 @@
       
       const newMain = doc.querySelector('main');
       const newTitle = doc.title;
+      const newNav = doc.querySelector('nav');
       const newHeaderTicker = doc.querySelector('.header-ticker-inner');
       const newSideCol = doc.querySelector('.side-col');
 
@@ -61,6 +62,12 @@
 
         const currentSideCol = document.querySelector('.side-col');
         if (currentSideCol && newSideCol) currentSideCol.replaceWith(newSideCol);
+
+        // Update Navigation for active state
+        const currentNav = document.querySelector('nav');
+        if (currentNav && newNav) {
+           currentNav.replaceWith(newNav);
+        }
 
         // Optionally update the ticker if it changed significantly
         const currentHeaderTicker = document.querySelector('.header-ticker-inner');
