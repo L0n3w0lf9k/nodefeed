@@ -177,7 +177,17 @@ function layout(title, body, meta = {}) {
   const popular = db.getMostViewed(4);
   const latest = db.getArticles(3);
 
-  const currentPath = meta.path || '';
+  // Ensure SITE_URL doesn't have a trailing slash for consistent concatenation
+  const baseSiteUrl = SITE_URL.endsWith('/') ? SITE_URL.slice(0, -1) : SITE_URL;
+  
+  // Resolve absolute image URL
+  let fullImgUrl = `${baseSiteUrl}/og-image.png`;
+  if (image) {
+    fullImgUrl = image.startsWith('http') ? image : `${baseSiteUrl}${image.startsWith('/') ? '' : '/'}${image}`;
+  }
+
+  const isArticle = currentPath.startsWith('/article/');
+  const canonicalUrl = `${baseSiteUrl}${currentPath}`;
   function navLink(href, label) {
     const isActive = currentPath === href || currentPath.startsWith(href + '/');
     return `<a href="${href}"${isActive ? ' class="active"' : ''}>${label}</a>`;
@@ -221,17 +231,30 @@ function layout(title, body, meta = {}) {
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>${title} — ${SITE_NAME}</title>
 <meta name="description" content="${desc}"/>
-<meta property="og:title" content="${title}"/>
+<link rel="canonical" href="${canonicalUrl}" />
+
+<!-- Open Graph / Facebook -->
+<meta property="og:type" content="${isArticle ? 'article' : 'website'}"/>
+<meta property="og:url" content="${canonicalUrl}"/>
+<meta property="og:title" content="${title} — ${SITE_NAME}"/>
 <meta property="og:description" content="${desc}"/>
-<meta property="og:image" content="${img && img.startsWith('http') ? img : img ? SITE_URL + img : SITE_URL + '/og-image.png'}"/>
-<meta property="og:image:width" content="1200"/>
-<meta property="og:image:height" content="630"/>
-<meta property="og:type" content="website"/>
+<meta property="og:image" content="${fullImgUrl}"/>
+<meta property="og:image:alt" content="${title}"/>
+<meta property="og:site_name" content="${SITE_NAME}"/>
+
+<!-- Twitter -->
 <meta name="twitter:card" content="summary_large_image"/>
-<meta name="twitter:site" content="@nodefeeds"/>
+<meta name="twitter:url" content="${canonicalUrl}"/>
 <meta name="twitter:title" content="${title} — ${SITE_NAME}"/>
 <meta name="twitter:description" content="${desc}"/>
-<meta name="twitter:image" content="${img && img.startsWith('http') ? img : img ? SITE_URL + img : SITE_URL + '/og-image.png'}"/>
+<meta name="twitter:image" content="${fullImgUrl}"/>
+<meta name="twitter:image:alt" content="${title}"/>
+<meta name="twitter:site" content="@nodefeeds"/>
+${isArticle && meta.published_time ? `
+<meta property="article:published_time" content="${new Date(meta.published_time).toISOString()}"/>
+<meta property="article:author" content="NodeFeeds AI"/>
+<meta property="article:section" content="${meta.category || 'Tech'}"/>
+` : ''}
 <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
 <meta name="google-site-verification" content="R3mHQsUmZPkUzQd1W9IdzfwhB9ztK4D9AR9XxeI2WRA" />
 <link rel="alternate" type="application/rss+xml" title="${SITE_NAME}" href="/feed.xml"/>
@@ -633,7 +656,9 @@ app.get('/article/:slug', (req, res) => {
     description: article.excerpt,
     image: article.image_url || '',
     jsonLd,
-    path: `/article/${article.slug}`
+    path: `/article/${article.slug}`,
+    published_time: article.created_at,
+    category: article.category
   }));
 });
 
