@@ -235,20 +235,23 @@ function layout(title, body, meta = {}) {
 <meta name="description" content="${desc}"/>
 <link rel="canonical" href="${canonicalUrl}" />
 
-<!-- Open Graph / Facebook -->
-<meta property="og:type" content="${isArticle ? 'article' : 'website'}"/>
-<meta property="og:url" content="${canonicalUrl}"/>
+<!-- Open Graph / Social Media -->
+<meta property="og:site_name" content="${SITE_NAME}"/>
 <meta property="og:title" content="${title} — ${SITE_NAME}"/>
 <meta property="og:description" content="${desc}"/>
+<meta property="og:url" content="${canonicalUrl}"/>
+<meta property="og:type" content="${isArticle ? 'article' : 'website'}"/>
+
 <meta property="og:image" content="${fullImgUrl}"/>
 <meta property="og:image:secure_url" content="${fullImgUrl}"/>
 <meta property="og:image:width" content="1200"/>
 <meta property="og:image:height" content="630"/>
 <meta property="og:image:type" content="${fullImgUrl.endsWith('.png') ? 'image/png' : 'image/jpeg'}"/>
 <meta property="og:image:alt" content="${title}"/>
-<meta property="og:site_name" content="${SITE_NAME}"/>
+
 <link rel="image_src" href="${fullImgUrl}"/>
 <meta itemprop="image" content="${fullImgUrl}"/>
+<meta name="image" content="${fullImgUrl}"/>
 
 <!-- Twitter -->
 <meta name="twitter:card" content="summary_large_image"/>
@@ -273,6 +276,7 @@ ${adsenseHead()}
 <link rel="stylesheet" href="/css/style.css"/>
 </head>
 <body>
+<img src="${fullImgUrl}" style="display:none" alt="Social Preview Image" />
 <div class="topbar">
   <span>${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
   <span class="topbar-right">Updated every 6 hours · Powered by Claude AI</span>
