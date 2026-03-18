@@ -177,6 +177,7 @@ function layout(title, body, meta = {}) {
   const popular = db.getMostViewed(4);
   const latest = db.getArticles(3);
 
+  const currentPath = meta.path || '';
   // Ensure SITE_URL doesn't have a trailing slash for consistent concatenation
   const baseSiteUrl = SITE_URL.endsWith('/') ? SITE_URL.slice(0, -1) : SITE_URL;
   
