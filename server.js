@@ -177,9 +177,17 @@ function layout(title, body, meta = {}) {
   const popular = db.getMostViewed(4);
   const latest = db.getArticles(3);
 
-  const navCats = cats.slice(0, 6).map(c =>
-    `<a href="/category/${encodeURIComponent(c.category)}">${c.category}</a>`
-  ).join('');
+  const currentPath = meta.path || '';
+  function navLink(href, label) {
+    const isActive = currentPath === href || currentPath.startsWith(href + '/');
+    return `<a href="${href}"${isActive ? ' class="active"' : ''}>${label}</a>`;
+  }
+
+  const navCats = cats.slice(0, 6).map(c => {
+    const href = `/category/${encodeURIComponent(c.category)}`;
+    const isActive = currentPath.startsWith(href);
+    return `<a href="${href}"${isActive ? ' class="active"' : ''}>${c.category}</a>`;
+  }).join('');
 
   const popularHtml = popular.map(a => `
     <a href="/article/${a.slug}" class="pop-item">
@@ -215,10 +223,15 @@ function layout(title, body, meta = {}) {
 <meta name="description" content="${desc}"/>
 <meta property="og:title" content="${title}"/>
 <meta property="og:description" content="${desc}"/>
-<meta property="og:image" content="${img}"/>
+<meta property="og:image" content="${img.startsWith('http') ? img : SITE_URL + img}"/>
+<meta property="og:image:width" content="1200"/>
+<meta property="og:image:height" content="630"/>
 <meta property="og:type" content="website"/>
 <meta name="twitter:card" content="summary_large_image"/>
 <meta name="twitter:site" content="@nodefeeds"/>
+<meta name="twitter:title" content="${title} — ${SITE_NAME}"/>
+<meta name="twitter:description" content="${desc}"/>
+<meta name="twitter:image" content="${img.startsWith('http') ? img : SITE_URL + img}"/>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
 <meta name="google-site-verification" content="R3mHQsUmZPkUzQd1W9IdzfwhB9ztK4D9AR9XxeI2WRA" />
 <link rel="alternate" type="application/rss+xml" title="${SITE_NAME}" href="/feed.xml"/>
@@ -278,11 +291,11 @@ ${adsenseHead()}
     </div>
   </div>
   <nav>
-    <a href="/">Home</a>
+    ${navLink('/', 'Home')}
     ${navCats}
-    <a href="/news">News</a>
-    <a href="/digest">Weekly Digest</a>
-    <a href="/about">About</a>
+    ${navLink('/news', 'News')}
+    ${navLink('/digest', 'Weekly Digest')}
+    ${navLink('/about', 'About')}
   </nav>
 </header>
 
@@ -422,7 +435,7 @@ app.get('/', (req, res) => {
       "query-input": "required name=search_term_string"
     }
   });
-  res.send(layout('AI & Tech Intelligence', heroHtml + gridHtml, { jsonLd: homeJsonLd }));
+  res.send(layout('AI & Tech Intelligence', heroHtml + gridHtml, { jsonLd: homeJsonLd, path: '/' }));
 });
 
 // Article
@@ -496,7 +509,7 @@ app.get('/article/:slug', (req, res) => {
       <div class="share-label">// Share this article</div>
       <div class="share-buttons">
         <a href="https://x.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}" target="_blank" rel="noopener" class="share-btn share-x">𝕏 Post</a>
-        <a href="https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}" target="_blank" rel="noopener" class="share-btn share-li">in Share</a>
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}" target="_blank" rel="noopener" class="share-btn share-li">LinkedIn</a>
         <a href="https://wa.me/?text=${encodedTitle}%20${encodedUrl}" target="_blank" rel="noopener" class="share-btn share-wa">WhatsApp</a>
         <button onclick="navigator.clipboard.writeText('${articleUrl}').then(()=>{this.textContent='✓ Copied!';setTimeout(()=>this.textContent='Copy Link',2000)})" class="share-btn share-copy">Copy Link</button>
       </div>
@@ -619,7 +632,8 @@ app.get('/article/:slug', (req, res) => {
   res.send(layout(article.title, body, {
     description: article.excerpt,
     image: article.image_url || '',
-    jsonLd
+    jsonLd,
+    path: `/article/${article.slug}`
   }));
 });
 
@@ -642,7 +656,7 @@ app.get('/category/:cat', (req, res) => {
       </div>
     </a>`).join('')}
   </div>`;
-  res.send(layout(cat, body));
+  res.send(layout(cat, body, { path: `/category/${encodeURIComponent(cat)}` }));
 });
 
 // Search
@@ -859,7 +873,7 @@ app.get('/about', (req, res) => {
       <p><a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Service</a> · <a href="/contact">Contact</a></p>
     </div>
   </article>`;
-  res.send(layout('About NodeFeeds', body, { description: 'NodeFeeds is an independent AI & tech intelligence magazine publishing fresh articles every 6 hours.' }));
+  res.send(layout('About NodeFeeds', body, { description: 'NodeFeeds is an independent AI & tech intelligence magazine publishing fresh articles every 6 hours.', path: '/about' }));
 });
 
 // Topic pages
@@ -920,7 +934,7 @@ app.get('/digest', (req, res) => {
   </div>
   ${digestHtml.length ? digestHtml : '<p class="no-results">No articles this week yet — check back soon.</p>'}`;
 
-  res.send(layout('Weekly Digest', body, { description: 'NodeFeeds weekly roundup — the best AI & tech articles from the past 7 days.' }));
+  res.send(layout('Weekly Digest', body, { description: 'NodeFeeds weekly roundup — the best AI & tech articles from the past 7 days.', path: '/digest' }));
 });
 
 // News
@@ -970,7 +984,8 @@ app.get('/news', async (req, res) => {
   </div>`;
 
   res.send(layout('Live Tech News', body, {
-    description: 'Latest tech news from TechCrunch, The Verge, Ars Technica, Wired, MIT Tech Review, VentureBeat and Reuters — updated hourly.'
+    description: 'Latest tech news from TechCrunch, The Verge, Ars Technica, Wired, MIT Tech Review, VentureBeat and Reuters — updated hourly.',
+    path: '/news'
   }));
 });
 

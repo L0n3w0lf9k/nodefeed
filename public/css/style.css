@@ -38,9 +38,10 @@ header{background:var(--bg);border-bottom:1px solid var(--border);position:stick
 .rss-link:hover{color:var(--accent);border-color:var(--accent)}
 
 /* NAV */
-nav{display:flex;gap:0;padding:0 1.5rem;overflow-x:auto;scrollbar-width:none;border-top:1px solid var(--border)}
-nav a{font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);padding:.55rem 1rem;border-bottom:2px solid transparent;white-space:nowrap;transition:color .2s,border-color .2s}
-nav a:hover{color:var(--text);border-bottom-color:var(--accent)}
+nav{display:flex;gap:0;padding:0 1.5rem;overflow-x:auto;scrollbar-width:none;border-top:1px solid var(--border);background:var(--bg)}
+nav a{font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#888;padding:.6rem 1.1rem;border-bottom:2px solid transparent;white-space:nowrap;transition:color .2s,border-color .2s,background .2s;position:relative}
+nav a:hover{color:var(--text);border-bottom-color:rgba(0,200,130,.5);background:rgba(255,255,255,.03)}
+nav a.active{color:var(--accent);border-bottom-color:var(--accent);background:rgba(0,200,130,.04)}
 
 /* LAYOUT */
 .site-wrap{display:grid;grid-template-columns:1fr 300px;gap:0;max-width:1200px;margin:0 auto;padding:1.5rem}
@@ -324,6 +325,8 @@ footer p{font-size:12px;color:var(--text3);line-height:1.7;margin-bottom:.75rem}
 .share-x:hover{border-color:#fff;color:#fff}
 .share-li:hover{border-color:#0077b5;color:#0077b5}
 .share-wa:hover{border-color:#25d366;color:#25d366}
+.share-li{border-color:rgba(0,119,181,.3)}
+.share-li:hover{border-color:#0077b5;color:#0077b5;background:rgba(0,119,181,.08)}
 
 /* REACTIONS */
 .reactions-section{margin:1.5rem 0;padding:1.5rem 0;border-bottom:1px solid var(--border)}

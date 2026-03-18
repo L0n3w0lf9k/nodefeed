@@ -12,27 +12,13 @@ if (!fs.existsSync(IMAGES_DIR)) {
 }
 
 // Build a highly specific, relevant prompt for each article
-function buildImagePrompt(title, category) {
-  const styleByCategory = {
-    'AI Tools':        'glowing neural network interface, blue green neon, dark tech background, digital nodes connecting',
-    'Productivity':    'clean minimal workspace, soft natural light, modern desk, laptop open, coffee, focused atmosphere',
-    'Gadgets':         'dramatic product photography, dark studio background, cinematic side lighting, premium consumer electronics',
-    'Automation':      'robotic arms and circuits, futuristic factory, neon blue industrial lighting, precision machinery',
-    'AI News':         'abstract artificial intelligence concept, digital brain with glowing synapses, data streams, dark background',
-    'Future of Work':  'futuristic office space, holographic displays, people collaborating with AI, warm modern lighting',
-    'Developer Tools': 'dark terminal with glowing green code, mechanical keyboard close up, multiple monitors, developer workspace',
-    'Tech Reviews':    'clean product flat lay, dark background, dramatic rim lighting, premium unboxing aesthetic',
-    'Space Tech':      'dramatic nebula with stars, rocket launch trail, astronaut floating, NASA mission control',
-    'Cybersecurity':   'dark matrix code rain, red warning alerts, glowing padlock shield, anonymous hacker silhouette',
-    'Crypto & Web3':   'golden bitcoin coins stacked, blockchain network nodes visualization, dark financial district background',
-  };
-
-  const style = styleByCategory[category] || 'technology concept, cinematic, dark background, professional';
-
-  // Keep prompt short — long prompts cause Pollinations timeouts
-  const titleSubject = title.split(' ').slice(0, 5).join(' ');
-
-  return `${titleSubject}, ${style}, 4k editorial photo`;
+function buildImagePrompt(title) {
+  // Use article title directly — gives Pollinations full context
+  const prefix = 'Generate cover picture for tech magazine article on - ';
+  const suffix = ', technology, futuristic';
+  const maxTitle = 250 - prefix.length - suffix.length;
+  const safeTitle = title.length <= maxTitle ? title : title.slice(0, maxTitle - 3) + '...';
+  return prefix + safeTitle + suffix;
 }
 
 // Download image from Pollinations new API endpoint
@@ -43,7 +29,7 @@ async function downloadAndSave(url, slug, title, category, suffix = '') {
     try {
       if (attempt > 1) {
         const wait = attempt * 6000;
-        console.log(`[Images] Retry ${attempt}/${MAX_RETRIES} in ${wait/1000}s...`);
+        console.log(`[Images] Retry ${attempt}/${MAX_RETRIES} in ${wait / 1000}s...`);
         await new Promise(r => setTimeout(r, wait));
       }
 
@@ -72,7 +58,7 @@ async function downloadAndSave(url, slug, title, category, suffix = '') {
       const filepath = path.join(IMAGES_DIR, filename);
       fs.writeFileSync(filepath, buffer);
 
-      console.log(`[Images] ✓ Saved: ${filename} (${Math.round(buffer.length/1024)}kb)`);
+      console.log(`[Images] ✓ Saved: ${filename} (${Math.round(buffer.length / 1024)}kb)`);
       return filename;
 
     } catch (e) {
@@ -84,7 +70,7 @@ async function downloadAndSave(url, slug, title, category, suffix = '') {
 }
 
 async function generateAndSaveImage(slug, title, category) {
-  const prompt = buildImagePrompt(title, category);
+  const prompt = buildImagePrompt(title);
   const seed = Math.abs(slug.split('').reduce((a, c) => a + c.charCodeAt(0), 0));
 
   // New Pollinations API endpoint
@@ -109,7 +95,7 @@ async function generateAndSaveImage(slug, title, category) {
 
   // Fallback 1: Unsplash with smart category query
   console.log('[Images] Pollinations failed — trying Unsplash fallback...');
-  const unsplash = await fetchUnsplashImage(title, category, slug);
+  const unsplash = await fetchUnsplashImage(prompt, category, slug);
   if (unsplash) return unsplash;
 
   // Fallback 2: Picsum — always works
@@ -117,7 +103,7 @@ async function generateAndSaveImage(slug, title, category) {
   return await fetchPicsumImage(slug, title);
 }
 
-async function fetchUnsplashImage(title, category, slug) {
+async function fetchUnsplashImage(prompt, category, slug) {
   const UNSPLASH_KEY = process.env.UNSPLASH_ACCESS_KEY;
   if (!UNSPLASH_KEY) return null;
 
@@ -135,7 +121,7 @@ async function fetchUnsplashImage(title, category, slug) {
     'Crypto & Web3': 'cryptocurrency blockchain digital',
   };
 
-  const query = categoryQueries[category] || 'technology';
+  const query = prompt || categoryQueries[category] || 'technology';
 
   try {
     const url = `https://api.unsplash.com/photos/random?query=${encodeURIComponent(query)}&orientation=landscape&client_id=${UNSPLASH_KEY}`;
@@ -201,4 +187,4 @@ function listSavedImages() {
   }
 }
 
-module.exports = { generateAndSaveImage, listSavedImages, IMAGES_DIR };
+module.exports = { generateAndSaveImage, listSavedImages, IMAGES_DIR, buildImagePrompt };

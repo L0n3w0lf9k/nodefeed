@@ -1,0 +1,10 @@
+--- Testing Image Prompt Generation ---
+Title: The Future of AI: How LLMs are Changing Coding
+Prompt: Generate cover picture for tech magazine article on - The Future of AI: How LLMs are Changing Coding, photorealistic, cinematic lighting, 4k
+---------------------------------------
+Title: NVIDIA's New Blackwell Chips: A Deep Dive
+Prompt: Generate cover picture for tech magazine article on - NVIDIA's New Blackwell Chips: A Deep Dive, photorealistic, cinematic lighting, 4k
+---------------------------------------
+Title: SpaceX Starship: Flight 4 Results and Analysis
+Prompt: Generate cover picture for tech magazine article on - SpaceX Starship: Flight 4 Results and Analysis, photorealistic, cinematic lighting, 4k
+---------------------------------------
