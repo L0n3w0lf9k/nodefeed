@@ -172,7 +172,7 @@ function sitemap(articles) {
 function layout(title, body, meta = {}) {
   const { description, image } = meta;
   const desc = description || 'AI & Tech Intelligence, Delivered Fresh — updated every 6 hours by Claude AI';
-  const img = image || `${SITE_URL}/og-image.svg`;
+  const img = image || `${SITE_URL}/og-image.png`;
   const cats = db.getCategories();
   const popular = db.getMostViewed(4);
   const latest = db.getArticles(3);
@@ -223,7 +223,7 @@ function layout(title, body, meta = {}) {
 <meta name="description" content="${desc}"/>
 <meta property="og:title" content="${title}"/>
 <meta property="og:description" content="${desc}"/>
-<meta property="og:image" content="${img.startsWith('http') ? img : SITE_URL + img}"/>
+<meta property="og:image" content="${img && img.startsWith('http') ? img : img ? SITE_URL + img : SITE_URL + '/og-image.png'}"/>
 <meta property="og:image:width" content="1200"/>
 <meta property="og:image:height" content="630"/>
 <meta property="og:type" content="website"/>
@@ -231,7 +231,7 @@ function layout(title, body, meta = {}) {
 <meta name="twitter:site" content="@nodefeeds"/>
 <meta name="twitter:title" content="${title} — ${SITE_NAME}"/>
 <meta name="twitter:description" content="${desc}"/>
-<meta name="twitter:image" content="${img.startsWith('http') ? img : SITE_URL + img}"/>
+<meta name="twitter:image" content="${img && img.startsWith('http') ? img : img ? SITE_URL + img : SITE_URL + '/og-image.png'}"/>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
 <meta name="google-site-verification" content="R3mHQsUmZPkUzQd1W9IdzfwhB9ztK4D9AR9XxeI2WRA" />
 <link rel="alternate" type="application/rss+xml" title="${SITE_NAME}" href="/feed.xml"/>
@@ -1048,7 +1048,7 @@ async function start() {
         await generateArticle();
       }
 
-      // Fetch initial news cache
+// Fetch initial news cache
       fetchNews().catch(e => console.error('[News] Initial fetch failed:', e.message));
 
       // Repair articles missing images or with external URLs
