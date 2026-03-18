@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cron = require('node-cron');
-const path = require('path');
+const path = require('node:path');
 const { marked } = require('marked');
 const RSS = require('rss');
 const db = require('./src/db');
@@ -50,13 +50,13 @@ async function fetchNews() {
       const items = (feed.items || []).slice(0, 5).map(item => {
         // Try multiple RSS image fields
         let image = null;
-        if (item.enclosure && item.enclosure.url && item.enclosure.type && item.enclosure.type.startsWith('image')) {
+        if (item.enclosure?.url && item.enclosure?.type?.startsWith('image')) {
           image = item.enclosure.url;
-        } else if (item['media:content'] && item['media:content']['$'] && item['media:content']['$'].url) {
+        } else if (item['media:content']?.['$']?.url) {
           image = item['media:content']['$'].url;
-        } else if (item['media:thumbnail'] && item['media:thumbnail']['$'] && item['media:thumbnail']['$'].url) {
+        } else if (item['media:thumbnail']?.['$']?.url) {
           image = item['media:thumbnail']['$'].url;
-        } else if (item.itunes && item.itunes.image) {
+        } else if (item.itunes?.image) {
           image = item.itunes.image;
         }
         return {
@@ -114,7 +114,7 @@ app.get('/api/reactions/:slug', (req, res) => {
 // Serve images from Railway Volume
 const VOLUME_PATH = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, 'data');
 const IMAGES_DIR = path.join(VOLUME_PATH, 'images');
-const fs = require('fs');
+const fs = require('node:fs');
 if (!fs.existsSync(IMAGES_DIR)) fs.mkdirSync(IMAGES_DIR, { recursive: true });
 app.use('/images', express.static(IMAGES_DIR));
 
@@ -154,7 +154,7 @@ function catColor(cat) {
 
 function thumbHtml(article, cls = 'card-thumb') {
   if (article.image_url) {
-    return `<div class="${cls}"><img src="${article.image_url}" alt="${article.image_alt || article.title}" loading="lazy" onerror="this.style.display='none';this.parentElement.classList.add('thumb-placeholder')"/></div>`;
+    return `<div class="${cls} shimmer-wrap"><img src="${article.image_url}" alt="${article.image_alt || article.title}" loading="lazy" onload="this.parentElement.classList.remove('shimmer-wrap')" onerror="this.style.display='none';this.parentElement.classList.add('thumb-placeholder');this.parentElement.classList.remove('shimmer-wrap')"/></div>`;
   }
   return `<div class="${cls}"><div class="thumb-placeholder"></div></div>`;
 }
@@ -179,7 +179,6 @@ function sitemap(articles) {
 function layout(title, body, meta = {}) {
   const { description, image } = meta;
   const desc = description || 'AI & Tech Intelligence, Delivered Fresh — updated every 6 hours by Claude AI';
-  const img = image || `${SITE_URL}/og-image.png`;
   const cats = db.getCategories();
   const popular = db.getMostViewed(4);
   const latest = db.getArticles(3);
@@ -191,7 +190,12 @@ function layout(title, body, meta = {}) {
   // Resolve absolute image URL
   let fullImgUrl = `${baseSiteUrl}/og-image.png`;
   if (image) {
-    fullImgUrl = image.startsWith('http') ? image : `${baseSiteUrl}${image.startsWith('/') ? '' : '/'}${image}`;
+    if (image.startsWith('http')) {
+      fullImgUrl = image;
+    } else {
+      const slash = image.startsWith('/') ? '' : '/';
+      fullImgUrl = `${baseSiteUrl}${slash}${image}`;
+    }
   }
 
   const isArticle = currentPath.startsWith('/article/');
@@ -241,7 +245,8 @@ function layout(title, body, meta = {}) {
 <title>${title} — ${SITE_NAME}</title>
 <meta name="description" content="${desc}"/>
 <link rel="canonical" href="${canonicalUrl}" />
-<meta name="view-transition" content="same-origin" />
+<link rel="stylesheet" href="/css/style.css"/>
+<script src="/js/transitions.js" defer></script>
 
 <!-- Open Graph / Social Media -->
 <meta property="og:site_name" content="${SITE_NAME}"/>
@@ -283,7 +288,6 @@ ${isArticle && meta.published_time ? `
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 ${adsenseHead()}
-<link rel="stylesheet" href="/css/style.css"/>
 </head>
 <body>
 <img src="${fullImgUrl}" style="display:none" alt="Social Preview Image" />
@@ -417,13 +421,16 @@ app.get('/', (req, res) => {
   const featured = articles.slice(1, 4);
   const grid = articles.slice(4);
 
+  let heroImgHtml = '<div class="hero-img hero-placeholder"></div>';
+  if (hero?.image_url) {
+    heroImgHtml = `<img src="${hero.image_url}" alt="${hero.image_alt || hero.title}" class="hero-img" onload="this.parentElement.classList.remove('shimmer-wrap')" onerror="this.parentElement.classList.remove('shimmer-wrap');this.parentElement.classList.add('hero-placeholder')"/>`;
+  }
+
   const heroHtml = hero ? `
   <section class="hero-section">
     <a href="/article/${hero.slug}" class="hero-link">
-      <div class="hero-img-wrap">
-        ${hero.image_url
-      ? `<img src="${hero.image_url}" alt="${hero.image_alt || hero.title}" class="hero-img"/>`
-      : `<div class="hero-img hero-placeholder"></div>`}
+      <div class="hero-img-wrap shimmer-wrap">
+        ${heroImgHtml}
         <span class="cat-badge" style="--cc:${catColor(hero.category)}">${hero.category}</span>
       </div>
       <div class="hero-body">
@@ -500,7 +507,7 @@ app.get('/article/:slug', (req, res) => {
 
   // Smart related: keyword matching first, category fallback
   const titleWords = article.title.toLowerCase()
-    .replace(/[^a-z0-9 ]/g, ' ').split(' ')
+    .replaceAll(/[^a-z0-9 ]/g, ' ').split(' ')
     .filter(w => w.length > 4);
   const keywordRelated = titleWords.length > 0
     ? db.searchArticles(titleWords[0], 10).filter(a => a.slug !== article.slug).slice(0, 3)
@@ -509,12 +516,19 @@ app.get('/article/:slug', (req, res) => {
     ? keywordRelated
     : db.getArticlesByCategory(article.category, 5).filter(a => a.slug !== article.slug).slice(0, 3);
 
+  let imageCreditHtml = '';
+  if (article.image_credit) {
+    if (article.image_credit_url) {
+      imageCreditHtml = `<span class="img-credit"><a href="${article.image_credit_url}" target="_blank">${article.image_credit}</a></span>`;
+    } else {
+      imageCreditHtml = `<span class="img-credit">${article.image_credit}</span>`;
+    }
+  }
+
   const imgHtml = article.image_url ? `
-    <div class="article-hero-img">
-      <img src="${article.image_url}" alt="${article.image_alt || article.title}" onerror="this.style.display='none'"/>
-      ${article.image_credit ? `<span class="img-credit">${article.image_credit_url
-      ? `<a href="${article.image_credit_url}" target="_blank">${article.image_credit}</a>`
-      : article.image_credit}</span>` : ''}
+    <div class="article-hero-img shimmer-wrap">
+      <img src="${article.image_url}" alt="${article.image_alt || article.title}" onload="this.parentElement.classList.remove('shimmer-wrap')" onerror="this.parentElement.classList.remove('shimmer-wrap');this.style.display='none'"/>
+      ${imageCreditHtml}
     </div>` : '';
 
   const tweetHtml = article.tweet_id
@@ -540,6 +554,8 @@ app.get('/article/:slug', (req, res) => {
   const articleUrl = `${SITE_URL}/article/${article.slug}`;
   const encodedUrl = encodeURIComponent(articleUrl);
   const encodedTitle = encodeURIComponent(article.title);
+  const rawParsed = typeof marked.parse === 'function' ? marked.parse(article.content) : marked(article.content);
+  const safeContent = typeof rawParsed === 'string' ? rawParsed : '';
 
   const body = `
   <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar"></div></div>
@@ -556,7 +572,7 @@ app.get('/article/:slug', (req, res) => {
     </div>
     ${imgHtml}
     ${adUnit()}
-    <div class="article-body">${marked(article.content)}</div>
+    <div class="article-body">${safeContent}</div>
     ${adUnit()}
 
     <div class="share-section">
@@ -715,19 +731,19 @@ app.get('/category/:cat', (req, res) => {
   res.send(layout(cat, body, { path: `/category/${encodeURIComponent(cat)}` }));
 });
 
+function highlight(text, term) {
+  if (!term || !text) return text;
+  const re = new RegExp('(' + term.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`) + ')', 'gi');
+  return text.replaceAll(re, '<mark>$1</mark>');
+}
+
 // Search
 app.get('/search', (req, res) => {
   const q = (req.query.q || '').trim();
   const results = q ? db.searchArticles(q, 20) : [];
 
-  function highlight(text, term) {
-    if (!term || !text) return text;
-    const re = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    return text.replace(re, '<mark>$1</mark>');
-  }
-
   const body = `
-  <div class="section-head"><span>Search: "${q}" — ${results.length} result${results.length !== 1 ? 's' : ''}</span></div>
+  <div class="section-head"><span>Search: "${q}" — ${results.length} result${results.length === 1 ? '' : 's'}</span></div>
   ${results.length === 0 && q ? `<p class="no-results">No articles found for "<strong>${q}</strong>". Try a different keyword.</p>` : ''}
   <div class="article-grid">
     ${results.map(a => `
@@ -750,10 +766,20 @@ app.get('/admin/images', (req, res) => {
   const articles = db.getArticles(100);
   const savedFiles = new Set(listSavedImages());
   const rows = articles.map(a => {
-    const isExternal = a.image_url && a.image_url.startsWith('http');
+    const isExternal = a.image_url?.startsWith('http') || false;
     const filename = a.image_url && !isExternal ? a.image_url.replace('/images/', '') : null;
     const onDisk = filename ? savedFiles.has(filename) : false;
-    const status = !a.image_url ? '✗ No image' : isExternal ? '✗ External URL (needs repair)' : onDisk ? '✓ On disk' : '✗ File missing';
+    
+    let status;
+    if (!a.image_url) {
+      status = '✗ No image';
+    } else if (isExternal) {
+      status = '✗ External URL (needs repair)';
+    } else if (onDisk) {
+      status = '✓ On disk';
+    } else {
+      status = '✗ File missing';
+    }
     return `<tr style="color:${onDisk ? '#00c882' : '#f55b5b'}">
       <td style="padding:4px 8px">${a.title.slice(0, 50)}</td>
       <td style="padding:4px 8px;font-size:10px;word-break:break-all">${(a.image_url || 'NONE').slice(0, 80)}</td>
@@ -1007,9 +1033,9 @@ app.get('/news', async (req, res) => {
     ? '<p class="no-results">News is loading — check back in a moment.</p>'
     : items.map(item => `
       <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="news-card">
-        <div class="news-card-thumb ${item.image ? '' : 'news-card-logo-thumb'}">
+        <div class="news-card-thumb ${item.image ? 'shimmer-wrap' : 'news-card-logo-thumb'}">
           ${item.image
-        ? `<img src="${item.image}" alt="${item.title}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+        ? `<img src="${item.image}" alt="${item.title}" loading="lazy" onload="this.parentElement.classList.remove('shimmer-wrap')" onerror="this.parentElement.classList.remove('shimmer-wrap');this.style.display='none';this.nextElementSibling.style.display='flex'"/>
                <div class="news-logo-fallback" style="display:none">
                  <img src="${item.logo}" alt="${item.source}" class="news-source-logo"/>
                  <span class="news-logo-name" style="color:${item.color}">${item.source}</span>
@@ -1135,7 +1161,10 @@ async function start() {
   }, 2000); // 2 second delay after server is up
 }
 
-start().catch(err => {
-  console.error('[NodeFeeds] Startup error:', err);
-  process.exit(1);
-});
+function bootstrap() {
+  start().catch(err => {
+    console.error('[NodeFeeds] Startup error:', err);
+    process.exit(1);
+  });
+}
+bootstrap();
