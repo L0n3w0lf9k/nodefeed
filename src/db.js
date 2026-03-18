@@ -81,17 +81,17 @@ module.exports = {
   init: getDb,
 
   getArticles(limit = 20, offset = 0) {
-    return queryAll('SELECT * FROM articles ORDER BY created_at DESC LIMIT ? OFFSET ?', [limit, offset]);
+    return queryAll('SELECT *, (SELECT COALESCE(SUM(count), 0) FROM reactions WHERE slug = articles.slug) as total_reactions FROM articles ORDER BY created_at DESC LIMIT ? OFFSET ?', [limit, offset]);
   },
   getArticle(slug) {
     return queryOne('SELECT * FROM articles WHERE slug = ?', [slug]);
   },
   getArticlesByCategory(category, limit = 10) {
-    return queryAll('SELECT * FROM articles WHERE category = ? ORDER BY created_at DESC LIMIT ?', [category, limit]);
+    return queryAll('SELECT *, (SELECT COALESCE(SUM(count), 0) FROM reactions WHERE slug = articles.slug) as total_reactions FROM articles WHERE category = ? ORDER BY created_at DESC LIMIT ?', [category, limit]);
   },
   searchArticles(query, limit = 20) {
     const q = `%${query}%`;
-    return queryAll('SELECT * FROM articles WHERE title LIKE ? OR excerpt LIKE ? ORDER BY created_at DESC LIMIT ?', [q, q, limit]);
+    return queryAll('SELECT *, (SELECT COALESCE(SUM(count), 0) FROM reactions WHERE slug = articles.slug) as total_reactions FROM articles WHERE title LIKE ? OR excerpt LIKE ? ORDER BY created_at DESC LIMIT ?', [q, q, limit]);
   },
   insertArticle(article) {
     try {
@@ -121,7 +121,7 @@ module.exports = {
     return queryAll('SELECT category, COUNT(*) as count FROM articles GROUP BY category ORDER BY count DESC');
   },
   getMostViewed(limit = 5) {
-    return queryAll('SELECT * FROM articles ORDER BY views DESC LIMIT ?', [limit]);
+    return queryAll('SELECT *, (SELECT COALESCE(SUM(count), 0) FROM reactions WHERE slug = articles.slug) as total_reactions FROM articles ORDER BY views DESC LIMIT ?', [limit]);
   },
   updateArticleImage(slug, image) {
     run(
@@ -162,7 +162,7 @@ module.exports = {
     // Gets most viewed articles updated in the last N hours
     // Since we don't track per-hour views, we use recently created + high views as proxy
     return queryAll(
-      "SELECT * FROM articles WHERE created_at >= datetime('now', ? || ' hours') ORDER BY views DESC LIMIT ?",
+      "SELECT *, (SELECT COALESCE(SUM(count), 0) FROM reactions WHERE slug = articles.slug) as total_reactions FROM articles WHERE created_at >= datetime('now', ? || ' hours') ORDER BY views DESC LIMIT ?",
       [`-${hours}`, limit]
     );
   },

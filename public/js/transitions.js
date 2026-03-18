@@ -118,4 +118,57 @@
     const bar = document.getElementById('progress-bar');
     if (bar) bar.style.width = Math.min(pct, 100) + '%';
   }
+
+  // Toast Notification System
+  window.showToast = function(message) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = message;
+
+    container.appendChild(toast);
+
+    // Remove after animation finishes (3 seconds total based on CSS)
+    setTimeout(() => {
+      toast.remove();
+    }, 3200);
+  };
+
+  window.copyToClipboard = function(text, btn) {
+    if (!navigator.clipboard) {
+      // Fallback for older browsers or non-secure contexts
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        window.showToast('Link copied successfully');
+      } catch (err) {
+        console.error('Fallback copy failed', err);
+      }
+      document.body.removeChild(textArea);
+      return;
+    }
+
+    navigator.clipboard.writeText(text).then(() => {
+      window.showToast('Link copied successfully');
+      
+      // Visual feedback on button too
+      const span = btn.querySelector('span');
+      if (span) {
+        const old = span.textContent;
+        span.textContent = '✓';
+        span.style.color = 'var(--accent)';
+        setTimeout(() => {
+          span.textContent = old;
+          span.style.color = '';
+        }, 2000);
+      }
+    }).catch(err => {
+      console.error('Copy failed', err);
+    });
+  };
 })();
