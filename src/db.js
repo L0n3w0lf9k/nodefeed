@@ -1,5 +1,5 @@
-const path = require('path');
-const fs = require('fs');
+const path = require('node:path');
+const fs = require('node:fs');
 const initSqlJs = require('sql.js');
 
 // Railway Volume mounts at /data by default — use that if available,
@@ -47,9 +47,17 @@ async function getDb() {
       read_time INTEGER DEFAULT 5,
       views INTEGER DEFAULT 0,
       tweet_id TEXT,
+      linkedin_id TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
+  // Migration: Add linkedin_id column if it doesn't exist
+  try {
+    db.run("ALTER TABLE articles ADD COLUMN linkedin_id TEXT");
+    persist();
+  } catch (e) {
+    // Ignore error if column already exists
+  }
   persist();
   return db;
 }
@@ -110,6 +118,9 @@ module.exports = {
   },
   updateTweetId(slug, tweetId) {
     run('UPDATE articles SET tweet_id = ? WHERE slug = ?', [tweetId, slug]);
+  },
+  updateLinkedInId(slug, liId) {
+    run('UPDATE articles SET linkedin_id = ? WHERE slug = ?', [liId, slug]);
   },
   incrementViews(slug) {
     run('UPDATE articles SET views = views + 1 WHERE slug = ?', [slug]);

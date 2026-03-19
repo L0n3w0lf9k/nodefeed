@@ -258,8 +258,9 @@ Return ONLY a valid JSON object — no text before or after it:
 
     if (saved.changes > 0) {
       console.log(`[NodeFeeds] ✓ Article saved: "${article.title}"`);
-      const { xId } = await postArticle({ ...article, slug });
+      const { xId, liId } = await postArticle({ ...article, slug });
       if (xId) db.updateTweetId(slug, xId);
+      if (liId) db.updateLinkedInId(slug, liId);
       return { success: true, title: article.title, slug };
     } else {
       console.log(`[NodeFeeds] Duplicate slug — skipped.`);

@@ -69,11 +69,29 @@ async function postToX(article) {
 // Required env vars: LINKEDIN_ACCESS_TOKEN and LINKEDIN_AUTHOR_URN
 
 async function getLinkedInUrn() {
-  const urn = process.env.LINKEDIN_AUTHOR_URN;
+  let urn = (process.env.LINKEDIN_AUTHOR_URN || '').trim();
   if (!urn) {
     console.error('[LinkedIn] ✗ LINKEDIN_AUTHOR_URN is missing. Set it in your environment variables.');
     return null;
   }
+
+  // Robustness: Ensure full URN format
+  if (!urn.startsWith('urn:li:')) {
+    // If it's pure digits, it's likely an Organization ID
+    if (/^\d+$/.test(urn)) {
+      urn = `urn:li:organization:${urn}`;
+    } else {
+      urn = `urn:li:person:${urn}`;
+    }
+    console.log(`[LinkedIn] Pre-pended URN prefix: ${urn}`);
+  }
+
+  // UGC API (v2) requires 'organization', 'company' often fails with 403 Data Processing Exception
+  if (urn.startsWith('urn:li:company:')) {
+    urn = urn.replace('urn:li:company:', 'urn:li:organization:');
+    console.log(`[LinkedIn] Normalised URN: company -> organization`);
+  }
+
   return urn;
 }
 
@@ -132,7 +150,11 @@ async function postToLinkedIn(article) {
     console.log(`[LinkedIn] ✓ Posted: ${postId}`);
     return postId;
   } catch (e) {
-    console.error('[LinkedIn] Failed to post:', e.message);
+    console.error('[LinkedIn] Failed to post article:', e.message);
+    if (e.message.includes('403')) {
+      console.error('[LinkedIn] Tips: Ensure your app has "w_member_social" AND "w_organization_social" permissions if posting to a page.');
+      console.error('[LinkedIn] Also verify that your Account ID is current and matches the Token owner.');
+    }
     return null;
   }
 }
