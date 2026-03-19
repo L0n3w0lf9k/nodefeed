@@ -902,7 +902,8 @@ footer p {
   display: flex;
   gap: 1.5rem;
   justify-content: center;
-  margin: 1rem 0
+  margin: 1rem 0;
+  white-space: nowrap;
 }
 
 .footer-links a {
