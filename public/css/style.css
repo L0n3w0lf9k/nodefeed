@@ -16,7 +16,7 @@
   --border2: #252535;
   --text: #f0f0f0;
   --text2: #aaa;
-  --text3: #555;
+  --text3: #888686;
   --accent: #00c882;
   --accent-dim: rgba(0, 200, 130, .1);
   --ff: 'Space Grotesk', sans-serif;
@@ -27,7 +27,8 @@ html {
   scroll-behavior: smooth
 }
 
-html, body {
+html,
+body {
   overflow-x: hidden;
   position: relative;
   width: 100%
@@ -1008,7 +1009,8 @@ footer p {
     padding: 1rem;
   }
 
-  .share-section, .reactions-section {
+  .share-section,
+  .reactions-section {
     width: 100%
   }
 
@@ -1523,14 +1525,15 @@ nav::after {
   gap: 1.5rem;
   margin: 0 0 2rem;
   padding: 1.25rem;
-  background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
   border: 1px solid var(--border);
   border-radius: 8px;
   backdrop-filter: blur(8px);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.2)
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2)
 }
 
-.share-section, .reactions-section {
+.share-section,
+.reactions-section {
   margin: 0;
   padding: 0;
   border: none;
@@ -1547,7 +1550,8 @@ nav::after {
   margin-bottom: .75rem
 }
 
-.share-buttons, .reaction-buttons {
+.share-buttons,
+.reaction-buttons {
   display: flex;
   gap: .6rem;
   flex-wrap: wrap
@@ -1581,7 +1585,10 @@ nav::after {
 .share-btn::after {
   content: '';
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: var(--accent);
   opacity: 0;
   transition: opacity .2s
@@ -1594,9 +1601,23 @@ nav::after {
   box-shadow: 0 0 15px rgba(0, 200, 130, 0.15)
 }
 
-.share-x:hover { border-color: #fff; color: #fff; box-shadow: 0 0 15px rgba(255,255,255,0.1) }
-.share-wa:hover { border-color: #25d366; color: #25d366; box-shadow: 0 0 15px rgba(37,211,102,0.1) }
-.share-li:hover { border-color: #0077b5; color: #0077b5; box-shadow: 0 0 15px rgba(0,119,181,0.1) }
+.share-x:hover {
+  border-color: #fff;
+  color: #fff;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.1)
+}
+
+.share-wa:hover {
+  border-color: #25d366;
+  color: #25d366;
+  box-shadow: 0 0 15px rgba(37, 211, 102, 0.1)
+}
+
+.share-li:hover {
+  border-color: #0077b5;
+  color: #0077b5;
+  box-shadow: 0 0 15px rgba(0, 119, 181, 0.1)
+}
 
 /* REACTIONS */
 .reaction-btn {
@@ -1833,7 +1854,7 @@ mark {
   align-items: center;
   gap: 0.5rem;
   animation: toast-in 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards,
-             toast-out 0.4s cubic-bezier(0.6, -0.28, 0.73, 0.05) 2.6s forwards;
+    toast-out 0.4s cubic-bezier(0.6, -0.28, 0.73, 0.05) 2.6s forwards;
   pointer-events: auto
 }
 
@@ -1856,6 +1877,7 @@ mark {
     opacity: 0;
     transform: translateY(2rem) scale(0.9);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -1867,6 +1889,7 @@ mark {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
+
   to {
     opacity: 0;
     transform: translateY(1rem) scale(0.9);

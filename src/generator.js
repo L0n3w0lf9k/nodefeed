@@ -98,10 +98,10 @@ function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 function estimateReadTime(text) { return Math.max(3, Math.round(text.split(/\s+/).length / 200)); }
 
 function fingerprint(text) {
-  const stopWords = new Set(['the','a','an','and','or','but','in','on','at','to','for',
-    'of','with','by','from','is','are','was','were','be','been','have','has','had',
-    'will','would','could','should','may','might','about','how','what','when','where',
-    'this','that','these','those','its','it','as','up','do','did','new','latest']);
+  const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
+    'of', 'with', 'by', 'from', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had',
+    'will', 'would', 'could', 'should', 'may', 'might', 'about', 'how', 'what', 'when', 'where',
+    'this', 'that', 'these', 'those', 'its', 'it', 'as', 'up', 'do', 'did', 'new', 'latest']);
   return text.toLowerCase()
     .replace(/[^a-z0-9 ]/g, ' ')
     .split(/\s+/)
@@ -165,7 +165,7 @@ async function generateArticle() {
         console.log(`[NodeFeeds] API attempt ${attempt}/3...`);
 
         const response = await client.messages.create({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-haiku-4-5-20251001',
           max_tokens: 16000,
           thinking: {
             type: 'enabled',
@@ -188,7 +188,7 @@ ${recentTitles || '(none yet)'}
 Find a fresh, specific angle that hasn't been covered. Then write a complete SEO-optimised magazine article for NodeFeeds.
 
 These are recent articles already on the site — where naturally relevant, you may reference them with markdown links like [article title](/article/slug):
-${recentArticles.slice(0,8).map(a => `- [${a.title}](/article/${a.slug})`).join('\n') || '(none yet)'}
+${recentArticles.slice(0, 8).map(a => `- [${a.title}](/article/${a.slug})`).join('\n') || '(none yet)'}
 
 Return ONLY a valid JSON object — no text before or after it:
 {
