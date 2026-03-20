@@ -70,26 +70,27 @@ async function postToX(article) {
 
 async function getLinkedInUrn() {
   let urn = (process.env.LINKEDIN_AUTHOR_URN || '').trim();
-  if (!urn) {
-    console.error('[LinkedIn] ✗ LINKEDIN_AUTHOR_URN is missing. Set it in your environment variables.');
-    return null;
-  }
+  if (!urn) return null;
 
-  // Robustness: Ensure full URN format
+  // Strip leading/trailing quotes (helps with copy-paste from some UIs)
+  urn = urn.replace(/^["']|["']$/g, '');
+
   if (!urn.startsWith('urn:li:')) {
-    // If it's pure digits, it's likely an Organization ID
     if (/^\d+$/.test(urn)) {
       urn = `urn:li:organization:${urn}`;
     } else {
       urn = `urn:li:person:${urn}`;
     }
-    console.log(`[LinkedIn] Pre-pended URN prefix: ${urn}`);
   }
 
   // UGC API (v2) requires 'organization', 'company' often fails with 403 Data Processing Exception
   if (urn.startsWith('urn:li:company:')) {
     urn = urn.replace('urn:li:company:', 'urn:li:organization:');
-    console.log(`[LinkedIn] Normalised URN: company -> organization`);
+  }
+
+  // Normalise member -> person (UGC API preference)
+  if (urn.startsWith('urn:li:member:')) {
+    urn = urn.replace('urn:li:member:', 'urn:li:person:');
   }
 
   return urn;
@@ -97,10 +98,7 @@ async function getLinkedInUrn() {
 
 async function postToLinkedIn(article) {
   const token = process.env.LINKEDIN_ACCESS_TOKEN;
-  if (!token) {
-    console.log('[LinkedIn] No access token — skipping.');
-    return null;
-  }
+  if (!token) return null;
 
   const author = await getLinkedInUrn();
   if (!author) return null;
@@ -128,7 +126,6 @@ async function postToLinkedIn(article) {
   };
 
   try {
-    console.log(`[LinkedIn] Posting as ${author}...`);
     const res = await fetch('https://api.linkedin.com/v2/ugcPosts', {
       method: 'POST',
       headers: {
@@ -139,33 +136,23 @@ async function postToLinkedIn(article) {
       body: JSON.stringify(body),
       timeout: 15000,
     });
-
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`HTTP ${res.status}: ${err.slice(0, 300)}`);
-    }
-
+    if (!res.ok) return null;
     const data = await res.json();
-    const postId = data.id || 'unknown';
-    console.log(`[LinkedIn] ✓ Posted: ${postId}`);
-    return postId;
+    return data.id || null;
   } catch (e) {
-    console.error('[LinkedIn] Failed to post article:', e.message);
-    if (e.message.includes('403')) {
-      console.error('[LinkedIn] Tips: Ensure your app has "w_member_social" AND "w_organization_social" permissions if posting to a page.');
-      console.error('[LinkedIn] Also verify that your Account ID is current and matches the Token owner.');
-    }
     return null;
   }
 }
 
 // ── MAIN EXPORT ───────────────────────────────────────────────────────────────
 async function postArticle(article) {
-  const [xId, liId] = await Promise.all([
+  // LinkedIn is currently disabled per user request. 
+  // To re-enable, add postToLinkedIn(article) to the Promise.all array below.
+  const [xId] = await Promise.all([
     postToX(article),
-    postToLinkedIn(article),
+    // postToLinkedIn(article),
   ]);
-  return { xId, liId };
+  return { xId };
 }
 
-module.exports = { postArticle };
+module.exports = { postArticle, getLinkedInUrn };
