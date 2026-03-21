@@ -35,8 +35,13 @@ const HASHTAG_MAP = {
 };
 
 function buildTweet(article) {
-  const tags = (HASHTAG_MAP[article.category] || ['#AI', '#Tech']).join(' ');
   const url = `${SITE_URL}/article/${article.slug}`;
+
+  if (article.tweet) {
+    return `${article.tweet}\n\n${url}`;
+  }
+
+  const tags = (HASHTAG_MAP[article.category] || ['#AI', '#Tech']).join(' ');
   const hashtagLen = tags.length + 1;
   const urlLen = 24;
   const maxTitle = 280 - hashtagLen - urlLen - 2;
