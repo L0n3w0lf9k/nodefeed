@@ -3,7 +3,7 @@ const { TwitterApi } = require('twitter-api-v2');
 const fetch = require('node-fetch');
 
 const SITE_URL = process.env.SITE_URL || 'https://nodefeeds.com';
-const MAX_TWEET_LENGTH = 230; // User preferred limit to avoid 403 errors
+const MAX_TWEET_LENGTH = 180; // User requested limit
 
 // ── X (TWITTER) ───────────────────────────────────────────────────────────────
 
@@ -37,30 +37,49 @@ const HASHTAG_MAP = {
 
 function buildTweet(article) {
   const url = `${SITE_URL}/article/${article.slug}`;
+  let hashtags = article.hashtags || '';
+  let text = article.tweet_text || article.tweet || '';
 
-  let tweetContent = '';
-  if (article.tweet) {
-    tweetContent = `${article.tweet}\n\n${url}`;
-  } else {
-    const tags = (HASHTAG_MAP[article.category] || ['#AI', '#Tech']).join(' ');
-    tweetContent = `${article.title}\n\n${url}\n\n${tags}`;
+  // If we have legacy 'tweet' field that contains hashtags, try to separate them
+  if (!article.tweet_text && article.tweet && article.tweet.includes('#')) {
+    const parts = article.tweet.split('#');
+    text = parts[0].trim();
+    hashtags = '#' + parts.slice(1).join('#').trim();
   }
 
-  // Twitter counts URLs as 23 chars (https), but here we use actual string length 
-  // until we know if it exceeds the user's explicit 230-char threshold.
+  // Fallback if no text but we have title
+  if (!text && article.title) {
+    text = article.title;
+  }
+
+  // If no hashtags provided in article object, use category defaults
+  if (!hashtags) {
+    hashtags = (HASHTAG_MAP[article.category] || ['#AI', '#Tech']).join(' ');
+  }
+
+  let tweetContent = `${text}\n\n${url}\n\n${hashtags}`;
+
   if (tweetContent.length > MAX_TWEET_LENGTH) {
-    console.log(`[X] Tweet exceeds ${MAX_TWEET_LENGTH} chars (${tweetContent.length}). Truncating...`);
-    // If AI tweet exists, truncate that part specifically to preserve the URL
-    if (article.tweet) {
-      const overhead = 2 + url.length; // \n\n + url
-      const maxText = MAX_TWEET_LENGTH - overhead;
-      tweetContent = `${article.tweet.slice(0, maxText - 3)}...\n\n${url}`;
+    console.log(`[X] Tweet exceeds ${MAX_TWEET_LENGTH} chars (${tweetContent.length}). Truncating text but preserving tags/URL...`);
+    
+    // Calculate overhead: 4 newlines + url + hashtags
+    // Note: Twitter counts URL as 23, but we use string length for user's explicit 180 limit.
+    const overhead = 4 + url.length + hashtags.length; 
+    const maxText = MAX_TWEET_LENGTH - overhead;
+    
+    if (maxText > 10) {
+      tweetContent = `${text.slice(0, maxText - 3)}...\n\n${url}\n\n${hashtags}`;
     } else {
-      // Fallback: truncate title
-      const tags = (HASHTAG_MAP[article.category] || ['#AI', '#Tech']).join(' ');
-      const overhead = 4 + url.length + tags.length; // \n\n + url + \n\n + tags
-      const maxTitle = MAX_TWEET_LENGTH - overhead;
-      tweetContent = `${article.title.slice(0, maxTitle - 3)}...\n\n${url}\n\n${tags}`;
+      // In extreme cases where hashtags + URL already exceed or nearly exceed the limit, 
+      // we might have to reduce hashtags.
+      const minimalOverhead = 4 + url.length;
+      const remaining = MAX_TWEET_LENGTH - minimalOverhead;
+      // Truncate text to 40 chars max if possible, then fill with tags
+      const textLimit = Math.min(text.length, Math.max(20, remaining / 2));
+      const truncatedText = text.slice(0, textLimit - 3) + '...';
+      const tagLimit = MAX_TWEET_LENGTH - minimalOverhead - truncatedText.length;
+      const truncatedTags = hashtags.slice(0, Math.max(0, tagLimit)).trim();
+      tweetContent = `${truncatedText}\n\n${url}${truncatedTags ? '\n\n' + truncatedTags : ''}`;
     }
   }
 
