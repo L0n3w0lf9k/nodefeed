@@ -3,7 +3,8 @@ const { TwitterApi } = require('twitter-api-v2');
 const fetch = require('node-fetch');
 
 const SITE_URL = process.env.SITE_URL || 'https://nodefeeds.com';
-const MAX_TWEET_LENGTH = 180; // User requested limit
+const MAX_TWEET_LENGTH = 280; // Standard Twitter limit
+const URL_LENGTH_BUFFER = 25; // User requested 25 chars for link
 
 // ── X (TWITTER) ───────────────────────────────────────────────────────────────
 
@@ -37,7 +38,7 @@ const HASHTAG_MAP = {
 
 function buildTweet(article) {
   const url = `${SITE_URL}/article/${article.slug}`;
-  let hashtags = article.hashtags || '';
+  let hashtags = article?.hashtags || '';
   let text = article.tweet_text || article.tweet || '';
 
   // If we have legacy 'tweet' field that contains hashtags, try to separate them
@@ -59,23 +60,22 @@ function buildTweet(article) {
 
   let tweetContent = `${text}\n\n${url}\n\n${hashtags}`;
 
+  // User requested 280 total, with link taking 25. 
+  // Custom logic: maxHookLength = 280 - 25 - length of hashtags - overhead (newlines)
   if (tweetContent.length > MAX_TWEET_LENGTH) {
-    console.log(`[X] Tweet exceeds ${MAX_TWEET_LENGTH} chars (${tweetContent.length}). Truncating text but preserving tags/URL...`);
+    console.log(`[X] Tweet exceeds ${MAX_TWEET_LENGTH} chars (${tweetContent.length}). Truncating hook...`);
     
-    // Calculate overhead: 4 newlines + url + hashtags
-    // Note: Twitter counts URL as 23, but we use string length for user's explicit 180 limit.
-    const overhead = 4 + url.length + hashtags.length; 
+    // Overhead: 4 newlines + URL buffer (25) + hashtags
+    const overhead = 4 + URL_LENGTH_BUFFER + hashtags.length; 
     const maxText = MAX_TWEET_LENGTH - overhead;
     
     if (maxText > 10) {
       tweetContent = `${text.slice(0, maxText - 3)}...\n\n${url}\n\n${hashtags}`;
     } else {
-      // In extreme cases where hashtags + URL already exceed or nearly exceed the limit, 
-      // we might have to reduce hashtags.
-      const minimalOverhead = 4 + url.length;
+      // If hashtags are too long, we must truncate them too
+      const minimalOverhead = 4 + URL_LENGTH_BUFFER;
       const remaining = MAX_TWEET_LENGTH - minimalOverhead;
-      // Truncate text to 40 chars max if possible, then fill with tags
-      const textLimit = Math.min(text.length, Math.max(20, remaining / 2));
+      const textLimit = Math.max(20, Math.floor(remaining * 0.6));
       const truncatedText = text.slice(0, textLimit - 3) + '...';
       const tagLimit = MAX_TWEET_LENGTH - minimalOverhead - truncatedText.length;
       const truncatedTags = hashtags.slice(0, Math.max(0, tagLimit)).trim();
