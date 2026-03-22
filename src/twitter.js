@@ -3,6 +3,7 @@ const { TwitterApi } = require('twitter-api-v2');
 const fetch = require('node-fetch');
 
 const SITE_URL = process.env.SITE_URL || 'https://nodefeeds.com';
+const MAX_TWEET_LENGTH = 230; // User preferred limit to avoid 403 errors
 
 // ── X (TWITTER) ───────────────────────────────────────────────────────────────
 
@@ -37,17 +38,33 @@ const HASHTAG_MAP = {
 function buildTweet(article) {
   const url = `${SITE_URL}/article/${article.slug}`;
 
+  let tweetContent = '';
   if (article.tweet) {
-    return `${article.tweet}\n\n${url}`;
+    tweetContent = `${article.tweet}\n\n${url}`;
+  } else {
+    const tags = (HASHTAG_MAP[article.category] || ['#AI', '#Tech']).join(' ');
+    tweetContent = `${article.title}\n\n${url}\n\n${tags}`;
   }
 
-  const tags = (HASHTAG_MAP[article.category] || ['#AI', '#Tech']).join(' ');
-  const hashtagLen = tags.length + 1;
-  const urlLen = 24;
-  const maxTitle = 280 - hashtagLen - urlLen - 2;
-  let title = article.title;
-  if (title.length > maxTitle) title = title.slice(0, maxTitle - 3) + '...';
-  return `${title}\n\n${url}\n\n${tags}`;
+  // Twitter counts URLs as 23 chars (https), but here we use actual string length 
+  // until we know if it exceeds the user's explicit 230-char threshold.
+  if (tweetContent.length > MAX_TWEET_LENGTH) {
+    console.log(`[X] Tweet exceeds ${MAX_TWEET_LENGTH} chars (${tweetContent.length}). Truncating...`);
+    // If AI tweet exists, truncate that part specifically to preserve the URL
+    if (article.tweet) {
+      const overhead = 2 + url.length; // \n\n + url
+      const maxText = MAX_TWEET_LENGTH - overhead;
+      tweetContent = `${article.tweet.slice(0, maxText - 3)}...\n\n${url}`;
+    } else {
+      // Fallback: truncate title
+      const tags = (HASHTAG_MAP[article.category] || ['#AI', '#Tech']).join(' ');
+      const overhead = 4 + url.length + tags.length; // \n\n + url + \n\n + tags
+      const maxTitle = MAX_TWEET_LENGTH - overhead;
+      tweetContent = `${article.title.slice(0, maxTitle - 3)}...\n\n${url}\n\n${tags}`;
+    }
+  }
+
+  return tweetContent;
 }
 
 async function postToX(article) {
@@ -160,4 +177,4 @@ async function postArticle(article) {
   return { xId };
 }
 
-module.exports = { postArticle, getLinkedInUrn };
+module.exports = { postArticle, getLinkedInUrn, buildTweet };
