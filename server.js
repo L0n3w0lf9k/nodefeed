@@ -145,7 +145,7 @@ function timeAgo(d) {
 function adsenseHead() {
   if (!ADSENSE_ID) return '';
   // crossorigin + onerror prevents ad blocker console errors from breaking the page
-  return `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_ID}" crossorigin="anonymous" onerror="console.warn('AdSense blocked by client')"></script>`;
+  return `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_ID}" crossorigin="anonymous"></script>`;
 }
 
 function adUnit() {
