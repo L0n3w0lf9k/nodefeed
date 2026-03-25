@@ -145,12 +145,12 @@ function timeAgo(d) {
 function adsenseHead() {
   if (!ADSENSE_ID) return '';
   // crossorigin + onerror prevents ad blocker console errors from breaking the page
-  return `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1364508722231350" crossorigin="anonymous"></script>`;
+  return `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_ID}" crossorigin="anonymous" onerror="console.warn('AdSense blocked by client')"></script>`;
 }
 
 function adUnit() {
   if (!ADSENSE_ID) return '';
-  return `<div class="ad-unit"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-1364508722231350" data-ad-slot="auto" data-ad-format="auto" data-full-width-responsive="true"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script></div>`;
+  return `<div class="ad-unit"><ins class="adsbygoogle" style="display:block" data-ad-client="${ADSENSE_ID}" data-ad-slot="auto" data-ad-format="auto" data-full-width-responsive="true"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script></div>`;
 }
 
 function catColor(cat) {
