@@ -49,15 +49,31 @@ async function getDb() {
       tweet_id TEXT,
       linkedin_id TEXT,
       type TEXT DEFAULT 'article',
+      tweet_text TEXT,
+      hashtags TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
   try {
     db.run("ALTER TABLE articles ADD COLUMN linkedin_id TEXT");
-  } catch (e) {}
+  } catch (e) {
+    // Column might already exist, safe to ignore
+  }
   try {
     db.run("ALTER TABLE articles ADD COLUMN type TEXT DEFAULT 'article'");
-  } catch (e) {}
+  } catch (e) {
+    console.debug('[DB] Column type likely already exists:', e.message);
+  }
+  try {
+    db.run("ALTER TABLE articles ADD COLUMN tweet_text TEXT");
+  } catch (e) {
+    console.debug('[DB] Column tweet_text likely already exists:', e.message);
+  }
+  try {
+    db.run("ALTER TABLE articles ADD COLUMN hashtags TEXT");
+  } catch (e) {
+    console.debug('[DB] Column hashtags likely already exists:', e.message);
+  }
   persist();
   return db;
 }
@@ -89,30 +105,30 @@ module.exports = {
   init: getDb,
 
   getArticles(limit = 20, offset = 0) {
-    return queryAll('SELECT *, (SELECT COALESCE(SUM(count), 0) FROM reactions WHERE slug = articles.slug) as total_reactions FROM articles ORDER BY created_at DESC LIMIT ? OFFSET ?', [limit, offset]);
+    return queryAll('SELECT *, (SELECT COALESCE(SUM(count), 0) FROM reactions WHERE slug = articles.slug) as total_reactions FROM articles WHERE created_at <= datetime(\'now\') ORDER BY created_at DESC LIMIT ? OFFSET ?', [limit, offset]);
   },
   getArticle(slug) {
     return queryOne('SELECT * FROM articles WHERE slug = ?', [slug]);
   },
   getArticlesByCategory(category, limit = 10) {
-    return queryAll('SELECT *, (SELECT COALESCE(SUM(count), 0) FROM reactions WHERE slug = articles.slug) as total_reactions FROM articles WHERE category = ? ORDER BY created_at DESC LIMIT ?', [category, limit]);
+    return queryAll('SELECT *, (SELECT COALESCE(SUM(count), 0) FROM reactions WHERE slug = articles.slug) as total_reactions FROM articles WHERE category = ? AND created_at <= datetime(\'now\') ORDER BY created_at DESC LIMIT ?', [category, limit]);
   },
   getArticlesByType(type, limit = 20, offset = 0) {
-    return queryAll('SELECT *, (SELECT COALESCE(SUM(count), 0) FROM reactions WHERE slug = articles.slug) as total_reactions FROM articles WHERE type = ? ORDER BY created_at DESC LIMIT ? OFFSET ?', [type, limit, offset]);
+    return queryAll('SELECT *, (SELECT COALESCE(SUM(count), 0) FROM reactions WHERE slug = articles.slug) as total_reactions FROM articles WHERE type = ? AND created_at <= datetime(\'now\') ORDER BY created_at DESC LIMIT ? OFFSET ?', [type, limit, offset]);
   },
   searchArticles(query, limit = 20) {
     const q = `%${query}%`;
-    return queryAll('SELECT *, (SELECT COALESCE(SUM(count), 0) FROM reactions WHERE slug = articles.slug) as total_reactions FROM articles WHERE title LIKE ? OR excerpt LIKE ? ORDER BY created_at DESC LIMIT ?', [q, q, limit]);
+    return queryAll('SELECT *, (SELECT COALESCE(SUM(count), 0) FROM reactions WHERE slug = articles.slug) as total_reactions FROM articles WHERE (title LIKE ? OR excerpt LIKE ?) AND created_at <= datetime(\'now\') ORDER BY created_at DESC LIMIT ?', [q, q, limit]);
   },
   insertArticle(article) {
     try {
       run(`INSERT OR IGNORE INTO articles
-        (slug, title, category, excerpt, content, image_url, image_thumb, image_alt, image_credit, image_credit_url, image_source, read_time, type)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (slug, title, category, excerpt, content, image_url, image_thumb, image_alt, image_credit, image_credit_url, image_source, read_time, type, tweet_text, hashtags, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))`,
         [article.slug, article.title, article.category, article.excerpt, article.content,
          article.image_url||null, article.image_thumb||null, article.image_alt||null,
          article.image_credit||null, article.image_credit_url||null, article.image_source||null,
-         article.read_time, article.type || 'article']);
+         article.read_time, article.type || 'article', article.tweet_text||null, article.hashtags||null, article.created_at || null]);
       return { changes: 1 };
     } catch (e) {
       console.error('[DB] insertArticle error:', e.message);
@@ -142,6 +158,9 @@ module.exports = {
       'UPDATE articles SET image_url=?, image_thumb=?, image_alt=?, image_credit=?, image_credit_url=?, image_source=? WHERE slug=?',
       [image.url, image.thumb, image.alt, image.credit, image.creditUrl, image.source, slug]
     );
+  },
+  getPendingPulse() {
+    return queryAll('SELECT slug, title, tweet_text, hashtags FROM articles WHERE tweet_id IS NULL AND created_at <= datetime(\'now\') ORDER BY created_at ASC');
   },
 
   getArticlesWithoutImages(limit = 50) {

@@ -14,7 +14,6 @@ const CATEGORIES = [
 ];
 
 const TOPICS = [
-  // Breaking AI News
   'latest AI model releases and benchmark results this week',
   'AI company announcements and product launches this week',
   'AI assistants chatbot updates and head to head comparisons',
@@ -32,8 +31,6 @@ const TOPICS = [
   'AI replacing jobs workforce automation impact news',
   'AI in science research and academic breakthroughs',
   'AI copyright law and intellectual property lawsuits news',
-
-  // Productivity & Tools
   'new productivity apps and tools launched this week',
   'automation tools for small businesses and freelancers',
   'new SaaS software launches and major updates this week',
@@ -42,8 +39,6 @@ const TOPICS = [
   'developer tools coding assistants and IDE updates',
   'no code and low code platform news and launches',
   'remote work hybrid work and future of work trends',
-
-  // Hardware & Gadgets
   'new consumer gadgets and electronics announced this week',
   'smartphone news iPhone Android releases leaks and reviews',
   'chipmakers semiconductor news Intel AMD Nvidia TSMC',
@@ -52,8 +47,6 @@ const TOPICS = [
   'electric vehicles autonomous driving tech news',
   'AR VR mixed reality headset news and launches',
   'laptop desktop and PC hardware news this week',
-
-  // Industry & Business
   'tech company layoffs hiring and restructuring news',
   'big tech earnings reports revenue and financial results',
   'tech startup venture capital funding and IPO news',
@@ -62,8 +55,6 @@ const TOPICS = [
   'tech mergers acquisitions and major deals this week',
   'cloud computing AWS Azure Google Cloud new features',
   'open source software community news and releases',
-
-  // Space Tech
   'rocket launches space missions and results this week',
   'SpaceX Starship Falcon launch updates and milestones',
   'NASA ESA JAXA space agency mission and discovery news',
@@ -72,8 +63,6 @@ const TOPICS = [
   'James Webb Hubble telescope new images and discoveries',
   'space tourism and private spaceflight industry news',
   'asteroid comet and planetary science discoveries',
-
-  // Cybersecurity
   'major data breaches and cyberattacks reported this week',
   'new cybersecurity tools and threat detection launches',
   'ransomware phishing and malware attack reports this week',
@@ -82,8 +71,6 @@ const TOPICS = [
   'privacy data protection GDPR and surveillance news',
   'zero day exploits software patches and vulnerability news',
   'VPN password manager and personal security tools news',
-
-  // Crypto & Web3
   'Bitcoin Ethereum crypto market movements and analysis',
   'new cryptocurrency altcoin and token project launches',
   'DeFi decentralised finance protocol news and updates',
@@ -103,7 +90,7 @@ function fingerprint(text) {
     'will', 'would', 'could', 'should', 'may', 'might', 'about', 'how', 'what', 'when', 'where',
     'this', 'that', 'these', 'those', 'its', 'it', 'as', 'up', 'do', 'did', 'new', 'latest']);
   return text.toLowerCase()
-    .replace(/[^a-z0-9 ]/g, ' ')
+    .replaceAll(/[^a-z0-9 ]/g, ' ')
     .split(/\s+/)
     .filter(w => w.length > 3 && !stopWords.has(w))
     .slice(0, 20)
@@ -132,10 +119,7 @@ function isTooSimilar(candidateText, recentArticles, threshold = 0.45) {
   return false;
 }
 
-async function generateArticle(type = 'article') {
-  const recentArticles = db.getRecentArticles(30);
-  console.log(`[NodeFeeds] [${type}] Loaded ${recentArticles.length} recent articles for duplicate check.`);
-
+function getTopicAndCategory(type, recentArticles) {
   let chosenTopic = null;
   let category = pickRandom(CATEGORIES);
 
@@ -158,42 +142,43 @@ async function generateArticle(type = 'article') {
     chosenTopic = 'highly useful AI tools, tips, and tricks for productivity, creativity, or development';
     category = 'AI Tools';
   }
+  return { chosenTopic, category };
+}
 
+function getPrompts(type, chosenTopic, category, recentArticles) {
   const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   const recentTitles = recentArticles.slice(0, 15).map(a => `- ${a.title}`).join('\n');
 
-  console.log(`[NodeFeeds] Generating ${type}: "${chosenTopic}" (${category})`);
-
-  let systemPrompt = `You are Luís Matos, a sharp, knowledgeable tech journalist from Lisbon, Portugal, writing for NodeFeeds.
+  const system = `You are Luís Matos, a sharp, knowledgeable tech journalist from Lisbon, Portugal, writing for NodeFeeds.
 Your writing is clear, insightful, genuinely useful, and engaging. You avoid hype and fluff.
 You MUST use web_search to find real, current information before writing.
 Today's date is ${today}.
 Write for a smart, busy audience who wants signal not noise.
-CRITICAL: Your final response MUST be a single valid JSON object and nothing else.`;
+CRITICAL: Your final response MUST be a single valid JSON (object or array) and nothing else.`;
 
-  let userPrompt = '';
-
+  let user = '';
   if (type === 'news') {
-    userPrompt = `Search the web for the 12 most notorious and relevant tech/AI news items right now.
-Produce a single comprehensive news digest article.
-For each of the 12 items:
-- Provide a concise summary.
-- CLEARLY state any contradicting information from different sources if found.
-- Display the sources clearly.
-- Give your professional opinion on the effects or possible effects of this subject.
+    user = `Search the web for the 12 most notorious and relevant tech/AI news items right now.
+Produce 12 individual, distinct news articles.
+For each article:
+- Provide a catchy, professional title.
+- Provide a concise summary (excerpt).
+- In the content: clearly state any contradicting information from different sources if found, display sources [[1]](#ref1), and give your professional Lisbon-journalist opinion.
 
-Structure carefully with headings for each news item.
-Return ONLY valid JSON:
-{
-  "title": "Daily Tech Digest: 12 Essential Stories [Date]",
-  "category": "AI News",
-  "excerpt": "A deep dive into today's 12 most important tech and AI developments, with analysis and source verification.",
-  "content": "Full article in markdown...",
-  "tweet_text": "Today's top 12 tech stories analyzed. [Summary hook]",
-  "hashtags": "TechNews AINews Digest"
-}`;
+Return ONLY a valid JSON ARRAY of exactly 12 objects:
+[
+  {
+    "title": "Title of article 1",
+    "category": "AI News",
+    "excerpt": "Short teaser...",
+    "content": "Full article in markdown...",
+    "tweet_text": "Catchy tweet for this specific story",
+    "hashtags": "AINews Tech"
+  },
+  ...
+]`;
   } else if (type === 'triplet') {
-    userPrompt = `Search for the most widely used or trending AI tools and generate a "Triple T" (Tools, Tips & Tricks) article.
+    user = `Search for the most widely used or trending AI tools and generate a "Triple T" (Tools, Tips & Tricks) article.
 Focus on how to use them better or for specific uses (e.g., "10 best use cases for X", "5 best tools to generate Y").
 Provide actionable, high-value advice that users can apply immediately.
 
@@ -207,8 +192,7 @@ Return ONLY valid JSON:
   "hashtags": "AITools Productivity Tips"
 }`;
   } else {
-    // Regular article logic
-    userPrompt = `Search the web for the latest news and developments about: "${chosenTopic}"
+    user = `Search the web for the latest news and developments about: "${chosenTopic}"
 IMPORTANT: These topics have been covered recently — do NOT repeat them:
 ${recentTitles || '(none yet)'}
 
@@ -225,69 +209,106 @@ Return ONLY valid JSON:
   "hashtags": "..."
 }`;
   }
+  return { system, user };
+}
 
-  try {
-    let article = null;
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        console.log(`[NodeFeeds] API attempt ${attempt}/3...`);
-        const response = await client.messages.create({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 16000,
-          thinking: { type: 'enabled', budget_tokens: 10000 },
-          tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-          system: systemPrompt,
-          messages: [{ role: 'user', content: userPrompt }]
-        });
+async function fetchAIResponse(system, user) {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      console.log(`[NodeFeeds] API attempt ${attempt}/3...`);
+      const response = await client.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 16000,
+        thinking: { type: 'enabled', budget_tokens: 10000 },
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        system: system,
+        messages: [{ role: 'user', content: user }]
+      });
 
-        const textContent = response.content.filter(b => b.type === 'text').map(b => b.text).join('');
-        const jsonMatch = textContent.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error('No JSON found');
-        article = JSON.parse(jsonMatch[0].trim());
-        break;
-      } catch (e) {
-        if (attempt === 3) throw e;
-        await new Promise(r => setTimeout(r, 2000));
-      }
+      const textContent = response.content.filter(b => b.type === 'text').map(b => b.text).join('');
+      const jsonMatch = textContent.match(/\[[\s\S]*\]|\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('No JSON found');
+      return JSON.parse(jsonMatch[0].trim());
+    } catch (e) {
+      if (attempt === 3) throw e;
+      await new Promise(r => setTimeout(r, 2000));
     }
+  }
+}
 
-    const baseSlug = slugify(article.title, { lower: true, strict: true }).slice(0, 60);
-    const slug = `${baseSlug}-${Date.now().toString().slice(-6)}`;
+async function processAndSaveArticle(article, index, type, category) {
+  const baseSlug = slugify(article.title, { lower: true, strict: true }).slice(0, 60);
+  const slug = `${baseSlug}-${Date.now().toString().slice(-6)}-${index}`;
 
-    // Image handling: Use static thumbnails for News and Triplet, generate for regular articles
-    let image = null;
-    if (type === 'news') {
-      image = { url: '/images/sections/news.png', thumb: '/images/sections/news.png', alt: 'NodeFeeds Daily News Digest' };
-    } else if (type === 'triplet') {
-      image = { url: '/images/sections/triplet.png', thumb: '/images/sections/triplet.png', alt: 'AI Triple T\'s: Tools, Tips & Tricks' };
-    } else {
-      console.log(`[NodeFeeds] Generating image for ${type}...`);
-      image = await generateAndSaveImage(slug, article.title, article.category);
-    }
+  // Image handling
+  let image = null;
+  if (type === 'news') {
+    image = { url: '/images/sections/news.png', thumb: '/images/sections/news.png', alt: 'NodeFeeds Daily News' };
+  } else if (type === 'triplet') {
+    image = { url: '/images/sections/triplet.png', thumb: '/images/sections/triplet.png', alt: 'AI Triple T\'s' };
+  } else {
+    console.log(`[NodeFeeds] Generating image for ${type} (${index + 1})...`);
+    image = await generateAndSaveImage(slug, article.title, article.category);
+  }
 
-    const saved = db.insertArticle({
-      slug,
-      title: article.title,
-      category: article.category || category,
-      excerpt: article.excerpt,
-      content: article.content,
-      read_time: estimateReadTime(article.content),
-      image_url: image?.url || null,
-      image_thumb: image?.thumb || null,
-      image_alt: image?.alt || article.title,
-      image_credit: image?.credit || null,
-      image_credit_url: image?.creditUrl || null,
-      image_source: image?.source || null,
-      type: type // Save the type to the DB
-    });
+  // Calculate staggered publish time for news
+  let createdAt = null;
+  if (type === 'news') {
+    const delayMs = index * 3600000; // 1 hour stagger
+    const d = new Date(Date.now() + delayMs);
+    createdAt = d.toISOString().replace('T', ' ').replace(/\..+/, '');
+  }
 
-    if (saved.changes > 0) {
-      console.log(`[NodeFeeds] ✓ Article saved: "${article.title}" [${type}]`);
+  const saved = db.insertArticle({
+    slug,
+    title: article.title,
+    category: article.category || category,
+    excerpt: article.excerpt,
+    content: article.content,
+    tweet_text: article.tweet_text,
+    hashtags: article.hashtags,
+    read_time: estimateReadTime(article.content),
+    image_url: image?.url || null,
+    image_thumb: image?.thumb || null,
+    image_alt: image?.alt || article.title,
+    image_credit: image?.credit || null,
+    image_credit_url: image?.creditUrl || null,
+    image_source: image?.source || null,
+    type: type,
+    created_at: createdAt
+  });
+
+  if (saved.changes > 0) {
+    console.log(`[NodeFeeds] ✓ Article saved: "${article.title}" [${type}] (Scheduled: ${createdAt || 'Now'})`);
+    if (type !== 'news') {
       const { xId } = await postArticle({ ...article, slug });
       if (xId) db.updateTweetId(slug, xId);
-      return { success: true, title: article.title, slug };
     }
-    return { success: false, reason: 'duplicate_slug' };
+    return { success: true, title: article.title, slug };
+  }
+  return null;
+}
+
+async function generateArticle(type = 'article') {
+  const recentArticles = db.getRecentArticles(30);
+  const { chosenTopic, category } = getTopicAndCategory(type, recentArticles);
+  console.log(`[NodeFeeds] Generating ${type}: "${chosenTopic}" (${category})`);
+
+  const { system, user } = getPrompts(type, chosenTopic, category, recentArticles);
+
+  try {
+    const rawResult = await fetchAIResponse(system, user);
+    const sourceArticles = Array.isArray(rawResult) ? rawResult : [rawResult];
+    const finalResults = [];
+
+    for (let i = 0; i < sourceArticles.length; i++) {
+        const result = await processAndSaveArticle(sourceArticles[i], i, type, category);
+        if (result) finalResults.push(result);
+    }
+
+    return finalResults.length > 0
+      ? { success: true, count: finalResults.length }
+      : { success: false, reason: 'no_articles_saved' };
   } catch (err) {
     console.error(`[NodeFeeds] ✗ Generation failed:`, err.message);
     return { success: false, reason: err.message };
@@ -295,10 +316,10 @@ Return ONLY valid JSON:
 }
 
 if (require.main === module) {
-  db.init().then(() => generateArticle()).then(r => {
-    console.log('Result:', r);
-    process.exit(0);
-  });
+  await db.init();
+  const r = await generateArticle();
+  console.log('Result:', r);
+  process.exit(0);
 }
 
 module.exports = { generateArticle };

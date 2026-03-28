@@ -6,6 +6,7 @@ const { marked } = require('marked');
 const RSS = require('rss');
 const db = require('./src/db');
 const { generateArticle } = require('./src/generator');
+const { postArticle } = require('./src/twitter');
 const { generateAndSaveImage, listSavedImages } = require('./src/images');
 
 // Cron Schedules for AdSense compliance
@@ -25,6 +26,30 @@ cron.schedule('0 8,20 * * *', () => {
 cron.schedule('0 21 * * *', () => {
   console.log('[Cron] Running AI Triple T generation...');
   generateArticle('triplet');
+});
+
+// Publish Pulse: Check for scheduled articles ready to be tweeted (every 15 mins)
+cron.schedule('*/15 * * * *', async () => {
+  console.log('[Cron] Pulse: Checking for pending publishes...');
+  try {
+    const pending = db.getPendingPulse();
+    if (pending.length > 0) {
+      console.log(`[Pulse] Found ${pending.length} articles to publish.`);
+      for (const article of pending) {
+        console.log(`[Pulse] Publishing: ${article.title}`);
+        const { xId } = await postArticle(article);
+        if (xId) {
+          db.updateTweetId(article.slug, xId);
+          console.log(`[Pulse] Published and tweeted: ${article.slug}`);
+        } else {
+          // If tweet fails, it stays in Pulse for next retry
+          console.warn(`[Pulse] Tweet failed for ${article.slug}, will retry.`);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[Pulse] Error:', err.message);
+  }
 });
 
 const app = express();
