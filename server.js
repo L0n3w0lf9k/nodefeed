@@ -105,8 +105,12 @@ function catColor(cat) {
 }
 
 function thumbHtml(article, cls = 'card-thumb') {
-  if (article.image_url) {
-    return `<div class="${cls} shimmer-wrap"><img src="${article.image_url}" alt="${article.image_alt || article.title}" loading="lazy" onload="this.parentElement.classList.remove('shimmer-wrap')" onerror="this.style.display='none';this.parentElement.classList.add('thumb-placeholder');this.parentElement.classList.remove('shimmer-wrap')"/></div>`;
+  let url = article.image_url;
+  if (article.type === 'news') url = '/images/sections/news.png';
+  if (article.type === 'triplet') url = '/images/sections/triplet.png';
+
+  if (url) {
+    return `<div class="${cls} shimmer-wrap"><img src="${url}" alt="${article.image_alt || article.title}" loading="lazy" onload="this.parentElement.classList.remove('shimmer-wrap')" onerror="this.style.display='none';this.parentElement.classList.add('thumb-placeholder');this.parentElement.classList.remove('shimmer-wrap')"/></div>`;
   }
   return `<div class="${cls}"><div class="thumb-placeholder"></div></div>`;
 }
@@ -346,9 +350,13 @@ function renderArticleList(req, res, title, articles, path) {
   const featured = articles.slice(1, 4);
   const grid = articles.slice(4);
 
+  let heroUrl = hero?.image_url;
+  if (hero?.type === 'news') heroUrl = '/images/sections/news.png';
+  if (hero?.type === 'triplet') heroUrl = '/images/sections/triplet.png';
+
   let heroImgHtml = '<div class="hero-img hero-placeholder"></div>';
-  if (hero?.image_url) {
-    heroImgHtml = `<img src="${hero.image_url}" alt="${hero.image_alt || hero.title}" class="hero-img" onload="this.parentElement.classList.remove('shimmer-wrap')" onerror="this.parentElement.classList.remove('shimmer-wrap');this.parentElement.classList.add('hero-placeholder')"/>`;
+  if (heroUrl) {
+    heroImgHtml = `<img src="${heroUrl}" alt="${hero.image_alt || hero.title}" class="hero-img" onload="this.parentElement.classList.remove('shimmer-wrap')" onerror="this.parentElement.classList.remove('shimmer-wrap');this.parentElement.classList.add('hero-placeholder')"/>`;
   }
 
   const heroHtml = hero ? `
@@ -429,9 +437,13 @@ app.get('/article/:slug', (req, res) => {
     }
   }
 
-  const imgHtml = article.image_url ? `
+  let heroUrl = article.image_url;
+  if (article.type === 'news') heroUrl = '/images/sections/news.png';
+  if (article.type === 'triplet') heroUrl = '/images/sections/triplet.png';
+
+  const imgHtml = heroUrl ? `
     <div class="article-hero-img shimmer-wrap">
-      <img src="${article.image_url}" alt="${article.image_alt || article.title}" onload="this.parentElement.classList.remove('shimmer-wrap')" onerror="this.parentElement.classList.remove('shimmer-wrap');this.style.display='none'"/>
+      <img src="${heroUrl}" alt="${article.image_alt || article.title}" onload="this.parentElement.classList.remove('shimmer-wrap')" onerror="this.parentElement.classList.remove('shimmer-wrap');this.style.display='none'"/>
       ${imageCreditHtml}
     </div>` : '';
 
