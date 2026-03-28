@@ -254,9 +254,13 @@ Return ONLY valid JSON:
     const baseSlug = slugify(article.title, { lower: true, strict: true }).slice(0, 60);
     const slug = `${baseSlug}-${Date.now().toString().slice(-6)}`;
 
-    // No pictures for News as requested
+    // Image handling: Use static thumbnails for News and Triplet, generate for regular articles
     let image = null;
-    if (type !== 'news') {
+    if (type === 'news') {
+      image = { url: '/images/sections/news.png', thumb: '/images/sections/news.png', alt: 'NodeFeeds Daily News Digest' };
+    } else if (type === 'triplet') {
+      image = { url: '/images/sections/triplet.png', thumb: '/images/sections/triplet.png', alt: 'AI Triple T\'s: Tools, Tips & Tricks' };
+    } else {
       console.log(`[NodeFeeds] Generating image for ${type}...`);
       image = await generateAndSaveImage(slug, article.title, article.category);
     }
