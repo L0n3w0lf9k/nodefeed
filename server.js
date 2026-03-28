@@ -1014,8 +1014,7 @@ async function start() {
         await generateArticle('article');
       }
 
-      // Fetch initial news cache
-      fetchNews().catch(e => console.error('[News] Initial fetch failed:', e.message));
+      // Fetch initial news cache - REMOVED (RSS logic deprecated)
 
       // Repair articles missing images or with external URLs
       const allArts = db.getArticles(200);
