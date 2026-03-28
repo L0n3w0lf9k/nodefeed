@@ -132,116 +132,134 @@ function isTooSimilar(candidateText, recentArticles, threshold = 0.45) {
   return false;
 }
 
-async function generateArticle() {
+async function generateArticle(type = 'article') {
   const recentArticles = db.getRecentArticles(30);
-  console.log(`[NodeFeeds] Loaded ${recentArticles.length} recent articles for duplicate check.`);
+  console.log(`[NodeFeeds] [${type}] Loaded ${recentArticles.length} recent articles for duplicate check.`);
 
-  const shuffledTopics = [...TOPICS].sort(() => Math.random() - 0.5);
   let chosenTopic = null;
+  let category = pickRandom(CATEGORIES);
 
-  for (const topic of shuffledTopics) {
-    if (!isTooSimilar(topic, recentArticles)) {
-      chosenTopic = topic;
-      break;
+  if (type === 'article') {
+    const shuffledTopics = [...TOPICS].sort(() => Math.random() - 0.5);
+    for (const topic of shuffledTopics) {
+      if (!isTooSimilar(topic, recentArticles)) {
+        chosenTopic = topic;
+        break;
+      }
     }
+    if (!chosenTopic) {
+      console.log('[NodeFeeds] All preset topics too similar — generating a novel topic...');
+      chosenTopic = 'an emerging or niche AI or tech story that has not been widely covered this month';
+    }
+  } else if (type === 'news') {
+    chosenTopic = 'the 12 most notorious, relevant, and impactful tech/AI news stories from the last 24 hours';
+    category = 'AI News';
+  } else if (type === 'triplet') {
+    chosenTopic = 'highly useful AI tools, tips, and tricks for productivity, creativity, or development';
+    category = 'AI Tools';
   }
 
-  if (!chosenTopic) {
-    console.log('[NodeFeeds] All preset topics too similar — generating a novel topic...');
-    chosenTopic = 'an emerging or niche AI or tech story that has not been widely covered this month';
-  }
-
-  const category = pickRandom(CATEGORIES);
   const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   const recentTitles = recentArticles.slice(0, 15).map(a => `- ${a.title}`).join('\n');
 
-  console.log(`[NodeFeeds] Generating: "${chosenTopic}" (${category})`);
+  console.log(`[NodeFeeds] Generating ${type}: "${chosenTopic}" (${category})`);
 
-  try {
-    let article = null;
-
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        console.log(`[NodeFeeds] API attempt ${attempt}/3...`);
-
-        const response = await client.messages.create({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 16000,
-          thinking: {
-            type: 'enabled',
-            budget_tokens: 10000
-          },
-          tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-          system: `You are a sharp, knowledgeable tech journalist writing for NodeFeeds — an independent AI & tech intelligence magazine.
+  let systemPrompt = `You are Luís Matos, a sharp, knowledgeable tech journalist from Lisbon, Portugal, writing for NodeFeeds.
 Your writing is clear, insightful, genuinely useful, and engaging. You avoid hype and fluff.
 You MUST use web_search to find real, current information before writing.
 Today's date is ${today}.
 Write for a smart, busy audience who wants signal not noise.
-CRITICAL: Your final response MUST be a single valid JSON object and nothing else. No prose, no explanation, no markdown fences — just the raw JSON object.`,
-          messages: [{
-            role: 'user',
-            content: `Search the web for the latest news and developments about: "${chosenTopic}"
+CRITICAL: Your final response MUST be a single valid JSON object and nothing else.`;
 
-IMPORTANT: These topics have been covered recently — do NOT repeat them or write something too similar:
+  let userPrompt = '';
+
+  if (type === 'news') {
+    userPrompt = `Search the web for the 12 most notorious and relevant tech/AI news items right now.
+Produce a single comprehensive news digest article.
+For each of the 12 items:
+- Provide a concise summary.
+- CLEARLY state any contradicting information from different sources if found.
+- Display the sources clearly.
+- Give your professional opinion on the effects or possible effects of this subject.
+
+Structure carefully with headings for each news item.
+Return ONLY valid JSON:
+{
+  "title": "Daily Tech Digest: 12 Essential Stories [Date]",
+  "category": "AI News",
+  "excerpt": "A deep dive into today's 12 most important tech and AI developments, with analysis and source verification.",
+  "content": "Full article in markdown...",
+  "tweet_text": "Today's top 12 tech stories analyzed. [Summary hook]",
+  "hashtags": "TechNews AINews Digest"
+}`;
+  } else if (type === 'triplet') {
+    userPrompt = `Search for the most widely used or trending AI tools and generate a "Triple T" (Tools, Tips & Tricks) article.
+Focus on how to use them better or for specific uses (e.g., "10 best use cases for X", "5 best tools to generate Y").
+Provide actionable, high-value advice that users can apply immediately.
+
+Return ONLY valid JSON:
+{
+  "title": "AI Triple T's: [Specific Tool/Topic] Tips & Tricks",
+  "category": "AI Tools",
+  "excerpt": "Maximize your AI output with these expert tips and tricks for [Topic].",
+  "content": "Full article in markdown...",
+  "tweet_text": "Master AI with today's Triple T's: [Hook]",
+  "hashtags": "AITools Productivity Tips"
+}`;
+  } else {
+    // Regular article logic
+    userPrompt = `Search the web for the latest news and developments about: "${chosenTopic}"
+IMPORTANT: These topics have been covered recently — do NOT repeat them:
 ${recentTitles || '(none yet)'}
 
-Find a fresh, specific angle that hasn't been covered. Then write a complete SEO-optimised magazine article for NodeFeeds.
+Find a fresh, specific angle. Then write a complete SEO-optimised magazine article for NodeFeeds.
+Include real data, quotes, and inline citations [[1]](#ref1).
 
-These are recent articles already on the site — where naturally relevant, you may reference them with markdown links like [article title](/article/slug):
-${recentArticles.slice(0, 8).map(a => `- [${a.title}](/article/${a.slug})`).join('\n') || '(none yet)'}
-
-Return ONLY a valid JSON object — no text before or after it:
+Return ONLY valid JSON:
 {
-  "title": "SEO-optimised title: specific, keyword-rich, compelling, under 60 chars, no clickbait",
+  "title": "...",
   "category": "${category}",
-  "excerpt": "Meta description style: 1-2 sentences, includes primary keyword, under 155 chars, tells reader exactly what they'll learn",
-  "tweet_text": "A high-engagement X (Twitter) hook or thought-provoking question. Do NOT include hashtags or URL. Keep it concise (under 160 chars).",
-  "hashtags": "Exactly 3 relevant, high-traffic hashtags separated by spaces.",
-  "content": "Full article in markdown, 900-1200 words structured as follows:\n\n## [Keyword-rich intro heading]\nHook paragraph: start with a surprising fact, stat, or question. State clearly what the article covers and why it matters NOW.\n\n## [Section 2 heading with keyword]\nDetailed section with real data, product names, version numbers, prices where relevant. Cite sources inline like this: [[1]](#ref1)\n\n## [Section 3 heading]\nDetailed section. Include a real quote from a founder, researcher or industry figure if found, with attribution and source citation.\n\n## [Section 4 heading]\nDetailed section. Use bullet points or numbered lists where it aids readability.\n\n## Key Takeaways\n3-5 bullet points summarising the most actionable insights for the reader.\n\n## References\n1. <a id='ref1'></a>[Source title](https://actual-url.com) — Publisher, Date\n2. <a id='ref2'></a>[Source title](https://actual-url.com) — Publisher, Date\n(Include every source used. Only include URLs you actually found during your web search. Never invent URLs.)\n\nWriting rules:\n- Short paragraphs (2-4 sentences max)\n- Use **bold** for key terms on first use\n- Include specific numbers, percentages, dates — always cite the source\n- Write at 8th grade reading level\n- Active voice throughout\n- No filler phrases like 'In conclusion' or 'It is worth noting'\n- Each section must add new information, not repeat previous sections\n- Every factual claim, statistic, or quote MUST have an inline citation\n- References section must only contain URLs you actually visited during research"
-}`
-          }]
+  "excerpt": "...",
+  "content": "...",
+  "tweet_text": "...",
+  "hashtags": "..."
+}`;
+  }
+
+  try {
+    let article = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`[NodeFeeds] API attempt ${attempt}/3...`);
+        const response = await client.messages.create({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 16000,
+          thinking: { type: 'enabled', budget_tokens: 10000 },
+          tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+          system: systemPrompt,
+          messages: [{ role: 'user', content: userPrompt }]
         });
 
-        // Filter out thinking blocks — only process text blocks
-        const textContent = response.content
-          .filter(b => b.type === 'text')
-          .map(b => b.text)
-          .join('');
-
-        if (!textContent.trim()) throw new Error('Empty text response');
-
-        // Extract JSON object even if there is surrounding text
+        const textContent = response.content.filter(b => b.type === 'text').map(b => b.text).join('');
         const jsonMatch = textContent.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error('No JSON object found in response: ' + textContent.slice(0, 100));
-
-        const parsed = JSON.parse(jsonMatch[0].trim());
-
-        if (!parsed.title || !parsed.content || !parsed.excerpt) {
-          throw new Error('Missing required fields in JSON');
-        }
-
-        article = parsed;
-        console.log(`[NodeFeeds] ✓ Valid JSON received on attempt ${attempt}`);
+        if (!jsonMatch) throw new Error('No JSON found');
+        article = JSON.parse(jsonMatch[0].trim());
         break;
-
-      } catch (parseErr) {
-        console.error(`[NodeFeeds] Attempt ${attempt}/3 failed:`, parseErr.message);
-        if (attempt === 3) throw new Error('All 3 attempts failed: ' + parseErr.message);
-        console.log(`[NodeFeeds] Waiting 3s before retry...`);
-        await new Promise(r => setTimeout(r, 3000));
+      } catch (e) {
+        if (attempt === 3) throw e;
+        await new Promise(r => setTimeout(r, 2000));
       }
-    }
-
-    if (isTooSimilar(article.title + ' ' + article.excerpt, recentArticles, 0.4)) {
-      console.log('[NodeFeeds] Generated article too similar to recent content — aborting.');
-      return { success: false, reason: 'too_similar_after_generation' };
     }
 
     const baseSlug = slugify(article.title, { lower: true, strict: true }).slice(0, 60);
     const slug = `${baseSlug}-${Date.now().toString().slice(-6)}`;
 
-    console.log(`[NodeFeeds] Generating image...`);
-    const image = await generateAndSaveImage(slug, article.title, article.category);
+    // No pictures for News as requested
+    let image = null;
+    if (type !== 'news') {
+      console.log(`[NodeFeeds] Generating image for ${type}...`);
+      image = await generateAndSaveImage(slug, article.title, article.category);
+    }
 
     const saved = db.insertArticle({
       slug,
@@ -256,18 +274,16 @@ Return ONLY a valid JSON object — no text before or after it:
       image_credit: image?.credit || null,
       image_credit_url: image?.creditUrl || null,
       image_source: image?.source || null,
+      type: type // Save the type to the DB
     });
 
     if (saved.changes > 0) {
-      console.log(`[NodeFeeds] ✓ Article saved: "${article.title}"`);
+      console.log(`[NodeFeeds] ✓ Article saved: "${article.title}" [${type}]`);
       const { xId } = await postArticle({ ...article, slug });
       if (xId) db.updateTweetId(slug, xId);
       return { success: true, title: article.title, slug };
-    } else {
-      console.log(`[NodeFeeds] Duplicate slug — skipped.`);
-      return { success: false, reason: 'duplicate_slug' };
     }
-
+    return { success: false, reason: 'duplicate_slug' };
   } catch (err) {
     console.error(`[NodeFeeds] ✗ Generation failed:`, err.message);
     return { success: false, reason: err.message };

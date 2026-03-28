@@ -48,16 +48,16 @@ async function getDb() {
       views INTEGER DEFAULT 0,
       tweet_id TEXT,
       linkedin_id TEXT,
+      type TEXT DEFAULT 'article',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
-  // Migration: Add linkedin_id column if it doesn't exist
   try {
     db.run("ALTER TABLE articles ADD COLUMN linkedin_id TEXT");
-    persist();
-  } catch (e) {
-    // Ignore error if column already exists
-  }
+  } catch (e) {}
+  try {
+    db.run("ALTER TABLE articles ADD COLUMN type TEXT DEFAULT 'article'");
+  } catch (e) {}
   persist();
   return db;
 }
@@ -97,6 +97,9 @@ module.exports = {
   getArticlesByCategory(category, limit = 10) {
     return queryAll('SELECT *, (SELECT COALESCE(SUM(count), 0) FROM reactions WHERE slug = articles.slug) as total_reactions FROM articles WHERE category = ? ORDER BY created_at DESC LIMIT ?', [category, limit]);
   },
+  getArticlesByType(type, limit = 20, offset = 0) {
+    return queryAll('SELECT *, (SELECT COALESCE(SUM(count), 0) FROM reactions WHERE slug = articles.slug) as total_reactions FROM articles WHERE type = ? ORDER BY created_at DESC LIMIT ? OFFSET ?', [type, limit, offset]);
+  },
   searchArticles(query, limit = 20) {
     const q = `%${query}%`;
     return queryAll('SELECT *, (SELECT COALESCE(SUM(count), 0) FROM reactions WHERE slug = articles.slug) as total_reactions FROM articles WHERE title LIKE ? OR excerpt LIKE ? ORDER BY created_at DESC LIMIT ?', [q, q, limit]);
@@ -104,12 +107,12 @@ module.exports = {
   insertArticle(article) {
     try {
       run(`INSERT OR IGNORE INTO articles
-        (slug, title, category, excerpt, content, image_url, image_thumb, image_alt, image_credit, image_credit_url, image_source, read_time)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (slug, title, category, excerpt, content, image_url, image_thumb, image_alt, image_credit, image_credit_url, image_source, read_time, type)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [article.slug, article.title, article.category, article.excerpt, article.content,
          article.image_url||null, article.image_thumb||null, article.image_alt||null,
          article.image_credit||null, article.image_credit_url||null, article.image_source||null,
-         article.read_time]);
+         article.read_time, article.type || 'article']);
       return { changes: 1 };
     } catch (e) {
       console.error('[DB] insertArticle error:', e.message);

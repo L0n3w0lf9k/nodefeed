@@ -8,86 +8,24 @@ const db = require('./src/db');
 const { generateArticle } = require('./src/generator');
 const { generateAndSaveImage, listSavedImages } = require('./src/images');
 
-const RSSParser = require('rss-parser');
-const rssParser = new RSSParser({
-  timeout: 10000,
-  customFields: {
-    item: [
-      ['media:content', 'media:content'],
-      ['media:thumbnail', 'media:thumbnail'],
-    ]
-  }
+// Cron Schedules for AdSense compliance
+// 06:00, 12:00, 18:00, 00:00: Regular Articles
+cron.schedule('0 0,6,12,18 * * *', () => {
+  console.log('[Cron] Running regular article generation...');
+  generateArticle('article');
 });
 
-// Change //
+// 08:00, 20:00: News Summaries
+cron.schedule('0 8,20 * * *', () => {
+  console.log('[Cron] Running news digest generation...');
+  generateArticle('news');
+});
 
-// ── NEWS CACHE ────────────────────────────────────────────────────────────────
-const NEWS_SOURCES = [
-  // Original sources
-  { name: 'TechCrunch', url: 'https://techcrunch.com/feed/', color: '#00c882', logo: 'https://techcrunch.com/wp-content/uploads/2015/02/cropped-cropped-favicon-gradient.png' },
-  { name: 'The Verge', url: 'https://www.theverge.com/rss/index.xml', color: '#fb7185', logo: 'https://www.theverge.com/static-assets/icons/favicon.ico' },
-  { name: 'Ars Technica', url: 'https://feeds.arstechnica.com/arstechnica/index', color: '#f5a623', logo: 'https://cdn.arstechnica.net/wp-content/uploads/2016/10/cropped-ars-logo-512_480-32x32.png' },
-  { name: 'Wired', url: 'https://www.wired.com/feed/rss', color: '#5b8af5', logo: 'https://www.wired.com/favicon.ico' },
-  { name: 'MIT Tech Review', url: 'https://www.technologyreview.com/feed/', color: '#a78bfa', logo: 'https://www.technologyreview.com/favicon.ico' },
-  { name: 'VentureBeat', url: 'https://venturebeat.com/feed/', color: '#fbbf24', logo: 'https://venturebeat.com/wp-content/themes/vb-news/img/favicon.ico' },
-  { name: 'BBC Technology', url: 'https://feeds.bbci.co.uk/news/technology/rss.xml', color: '#5bf5c0', logo: 'https://static.files.bbci.co.uk/core/website/assets/static/icons/favicon-32x32.png' },
-  { name: 'Engadget', url: 'https://www.engadget.com/rss.xml', color: '#ff0070', logo: 'https://www.engadget.com/favicon.ico' },
-  { name: 'ZDNet', url: 'https://www.zdnet.com/news/rss.xml', color: '#e63946', logo: 'https://www.zdnet.com/favicon.ico' },
-  { name: 'CNET', url: 'https://www.cnet.com/rss/news/', color: '#e8c22e', logo: 'https://www.cnet.com/favicon.ico' },
-  { name: 'The Guardian', url: 'https://www.theguardian.com/technology/rss', color: '#00b2ff', logo: 'https://assets.guim.co.uk/images/favicons/32x32.ico' },
-  { name: 'Hacker News (New)', url: 'https://hnrss.org/newest?points=50', color: '#fb923c', logo: 'https://news.ycombinator.com/favicon.ico' },
-  { name: 'MacRumors', url: 'https://feeds.macrumors.com/MacRumors-All', color: '#888888', logo: 'https://www.macrumors.com/favicon.ico' },
-  { name: 'The Hacker News', url: 'https://feeds.feedburner.com/TheHackersNews', color: '#ff3e3e', logo: 'https://thehackernews.com/favicon.ico' },
-];
-
-let newsCache = { items: [], fetchedAt: null };
-
-async function fetchNews() {
-  console.log('[News] Fetching RSS feeds...');
-  const allItems = [];
-
-  for (const source of NEWS_SOURCES) {
-    try {
-      const feed = await rssParser.parseURL(source.url);
-      const items = (feed.items || []).slice(0, 5).map(item => {
-        // Try multiple RSS image fields
-        let image = null;
-        if (item.enclosure?.url && item.enclosure?.type?.startsWith('image')) {
-          image = item.enclosure.url;
-        } else if (item['media:content']?.['$']?.url) {
-          image = item['media:content']['$'].url;
-        } else if (item['media:thumbnail']?.['$']?.url) {
-          image = item['media:thumbnail']['$'].url;
-        } else if (item.itunes?.image) {
-          image = item.itunes.image;
-        }
-        return {
-          title: item.title || '',
-          link: item.link || item.guid || '',
-          source: source.name,
-          color: source.color,
-          logo: source.logo,
-          date: item.pubDate || item.isoDate || new Date().toISOString(),
-          excerpt: (item.contentSnippet || item.summary || '').slice(0, 160).trim(),
-          image,
-        };
-      });
-      allItems.push(...items);
-      console.log(`[News] ✓ ${source.name}: ${items.length} items`);
-    } catch (e) {
-      console.error(`[News] ✗ ${source.name}: ${e.message}`);
-    }
-  }
-
-  // Sort by date, newest first, take top 20
-  allItems.sort((a, b) => new Date(b.date) - new Date(a.date));
-  newsCache = { items: allItems.slice(0, 20), fetchedAt: new Date() };
-  console.log(`[News] Cache updated: ${newsCache.items.length} items`);
-  return newsCache.items;
-}
-
-// Refresh news every 15 minutes
-cron.schedule('*/15 * * * *', fetchNews);
+// 21:00: AI Triple T's
+cron.schedule('0 21 * * *', () => {
+  console.log('[Cron] Running AI Triple T generation...');
+  generateArticle('triplet');
+});
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -201,16 +139,13 @@ function sitemap(articles) {
 
 function layout(title, body, meta = {}) {
   const { description, image } = meta;
-  const desc = description || 'AI & Tech Intelligence, Delivered Fresh — updated every 6 hours by Claude AI';
-  const cats = db.getCategories();
+  const desc = description || 'Independent AI & Tech Intelligence — Curated by Luís Matos';
   const popular = db.getMostViewed(4);
   const latest = db.getArticles(3);
 
   const currentPath = meta.path || '';
-  // Ensure SITE_URL doesn't have a trailing slash for consistent concatenation
   const baseSiteUrl = SITE_URL.endsWith('/') ? SITE_URL.slice(0, -1) : SITE_URL;
 
-  // Resolve absolute image URL
   let fullImgUrl = `${baseSiteUrl}/og-image.png`;
   if (image) {
     if (image.startsWith('http')) {
@@ -224,15 +159,9 @@ function layout(title, body, meta = {}) {
   const isArticle = currentPath.startsWith('/article/');
   const canonicalUrl = `${baseSiteUrl}${currentPath}`;
   function navLink(href, label) {
-    const isActive = currentPath === href || currentPath.startsWith(href + '/');
+    const isActive = (href === '/' && currentPath === '/') || (href !== '/' && currentPath.startsWith(href));
     return `<a href="${href}"${isActive ? ' class="active"' : ''}>${label}</a>`;
   }
-
-  const navCats = cats.slice(0, 6).map(c => {
-    const href = `/category/${encodeURIComponent(c.category)}`;
-    const isActive = currentPath.startsWith(href);
-    return `<a href="${href}"${isActive ? ' class="active"' : ''}>${c.category}</a>`;
-  }).join('');
 
   const popularHtml = popular.map(a => `
     <a href="/article/${a.slug}" class="pop-item">
@@ -249,7 +178,7 @@ function layout(title, body, meta = {}) {
     <a href="/article/${a.slug}" class="latest-side-item">
       <span class="cat-label" style="color:${catColor(a.category)}">${a.category}</span>
       <h4>${a.title}</h4>
-      <div class="meta-sm trending-views">🔥 ${a.views} views today · ${metricsHtml(a).replace('👁 ' + a.views, '').replace('🔥', '').trim()}</div>
+      <div class="meta-sm trending-views">🔥 ${a.views} views today</div>
     </a>`).join('') : '<p style="padding:.75rem 1rem;font-size:12px;color:var(--text3)">Check back later</p>';
 
   const latestSideHtml = latest.map(a => `
@@ -259,11 +188,21 @@ function layout(title, body, meta = {}) {
       <div class="meta-sm">${timeAgo(a.created_at)} · ${a.read_time} min · ${metricsHtml(a)}</div>
     </a>`).join('');
 
+  const bioHtml = `
+    <div class="widget bio-widget">
+      <div class="widget-title">// Editor</div>
+      <div class="bio-content">
+        <div class="bio-name">Luís Matos</div>
+        <div class="bio-loc">Lisbon, Portugal</div>
+        <p>Tech journalist and AI researcher uncovering the signal in the noise. Delivering daily intelligence on the future of technology.</p>
+        <a href="https://www.linkedin.com/in/lu%C3%ADs-matos-137b60189/" target="_blank" class="linkedin-btn">Follow on LinkedIn →</a>
+      </div>
+    </div>`;
+
   return `<!DOCTYPE html>
 <html lang="en" prefix="og: https://ogp.me/ns#">
 <head>
 <meta charset="UTF-8"/>
-<!-- og:type debug: ${isArticle ? 'article' : 'website'} -->
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>${title} — ${SITE_NAME}</title>
 <meta name="description" content="${desc}"/>
@@ -277,19 +216,10 @@ function layout(title, body, meta = {}) {
 <meta property="og:description" content="${desc}"/>
 <meta property="og:url" content="${canonicalUrl}"/>
 <meta property="og:type" content="${isArticle ? 'article' : 'website'}"/>
-
 <meta property="og:image" content="${fullImgUrl}"/>
-<meta property="og:image:url" content="${fullImgUrl}"/>
-<meta property="og:image:secure_url" content="${fullImgUrl}"/>
 <meta property="og:image:width" content="1200"/>
 <meta property="og:image:height" content="630"/>
-<meta property="og:image:type" content="${fullImgUrl.endsWith('.png') ? 'image/png' : 'image/jpeg'}"/>
 <meta property="og:image:alt" content="${title}"/>
-
-<link rel="image_src" href="${fullImgUrl}"/>
-<link rel="logo" href="${baseSiteUrl}/og-image.png"/>
-<meta itemprop="image" content="${fullImgUrl}"/>
-<meta name="image" content="${fullImgUrl}"/>
 
 <!-- Twitter -->
 <meta name="twitter:card" content="summary_large_image"/>
@@ -297,11 +227,10 @@ function layout(title, body, meta = {}) {
 <meta name="twitter:title" content="${title} — ${SITE_NAME}"/>
 <meta name="twitter:description" content="${desc}"/>
 <meta name="twitter:image" content="${fullImgUrl}"/>
-<meta name="twitter:image:alt" content="${title}"/>
 <meta name="twitter:site" content="@nodefeeds"/>
 ${isArticle && meta.published_time ? `
 <meta property="article:published_time" content="${new Date(meta.published_time).toISOString()}"/>
-<meta property="article:author" content="NodeFeeds AI"/>
+<meta property="article:author" content="Luís Matos"/>
 <meta property="article:section" content="${meta.category || 'Tech'}"/>
 ` : ''}
 <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
@@ -313,10 +242,9 @@ ${isArticle && meta.published_time ? `
 ${adsenseHead()}
 </head>
 <body>
-<img src="${fullImgUrl}" style="display:none" alt="Social Preview Image" />
 <div class="topbar">
   <span>${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-  <span class="topbar-right">Updated every 6 hours · Powered by Claude AI</span>
+  <span class="topbar-right">Curated by Luís Matos</span>
 </div>
 <header>
   <div class="header-inner">
@@ -329,68 +257,42 @@ ${adsenseHead()}
         <circle cx="26" cy="44" r="3.5" fill="#00c882" opacity=".3"/>
         <circle cx="8" cy="34" r="3.5" fill="#00c882" opacity=".4"/>
         <circle cx="8" cy="18" r="3.5" fill="#00c882" opacity=".7"/>
-        <line x1="26" y1="8" x2="44" y2="18" stroke="#00c882" stroke-width="1" opacity=".3"/>
-        <line x1="26" y1="8" x2="8" y2="18" stroke="#00c882" stroke-width="1" opacity=".3"/>
         <circle cx="26" cy="26" r="5" fill="#00c882"/>
       </svg>
       <span class="brand-name">node<span class="accent">feeds</span></span>
     </a>
     <form class="search-form" action="/search" method="get">
-      <input type="search" name="q" placeholder="Search articles..." class="search-input" autocomplete="off"/>
+      <input type="search" name="q" placeholder="Search insights..." class="search-input" autocomplete="off"/>
       <button type="submit" class="search-btn">⌕</button>
     </form>
-    <div class="header-ticker-wrap">
-      <div class="header-ticker">
-        <div class="header-ticker-inner">
-          ${newsCache.items.slice(0, 12).map(item =>
-    `<a href="${item.link}" target="_blank" rel="noopener noreferrer" class="header-ticker-item">
-              <span class="header-ticker-source" style="color:${item.color}">${item.source}</span>
-              <span class="header-ticker-title">${item.title}</span>
-            </a><span class="header-ticker-sep">·</span>`
-  ).join('')}
-          ${newsCache.items.slice(0, 12).map(item =>
-    `<a href="${item.link}" target="_blank" rel="noopener noreferrer" class="header-ticker-item">
-              <span class="header-ticker-source" style="color:${item.color}">${item.source}</span>
-              <span class="header-ticker-title">${item.title}</span>
-            </a><span class="header-ticker-sep">·</span>`
-  ).join('')}
-        </div>
-      </div>
-    </div>
     <div class="header-meta">
-      <span class="live-badge">● LIVE</span>
       <a href="/feed.xml" class="rss-link">RSS</a>
     </div>
   </div>
   <nav>
     ${navLink('/', 'Home')}
-    ${navCats}
+    ${navLink('/articles', 'Articles')}
     ${navLink('/news', 'News')}
-    ${navLink('/digest', 'Weekly Digest')}
-    ${navLink('/about', 'About')}
+    ${navLink('/triplet', 'AI Triple T\'s')}
   </nav>
 </header>
 
 <div class="site-wrap">
   <main class="main-col">${body}</main>
   <aside class="side-col">
+    ${bioHtml}
     <div class="widget">
       <div class="widget-title">// Most Read</div>
       ${popularHtml}
     </div>
     ${adUnit()}
     <div class="widget">
-      <div class="widget-title">// Latest</div>
+      <div class="widget-title">// Latest Analysis</div>
       ${latestSideHtml}
     </div>
     <div class="widget">
-      <div class="widget-title">// Trending Today</div>
+      <div class="widget-title">// Trending</div>
       ${trendingHtml}
-    </div>
-    <div class="widget newsletter-widget">
-      <div class="widget-title">// Stay Ahead</div>
-      <p>NodeFeeds publishes 4 new articles every day — all researched and written by AI.</p>
-      <a href="/feed.xml" class="rss-btn">Subscribe via RSS →</a>
     </div>
     ${adUnit()}
   </aside>
@@ -399,7 +301,7 @@ ${adsenseHead()}
 <footer>
   <div class="footer-inner">
     <div class="footer-brand">node<span class="accent">feeds</span></div>
-    <p>Independent AI & tech intelligence, published automatically every 6 hours.</p>
+    <p>Independent AI & tech intelligence, published by Luís Matos.</p>
     <div class="footer-links">
       <a href="/about">About</a>
       <a href="/digest">Weekly Digest</a>
@@ -410,26 +312,7 @@ ${adsenseHead()}
       <a href="/sitemap.xml">Sitemap</a>
       <a href="https://x.com/nodefeeds" target="_blank">@nodefeeds</a>
     </div>
-    <p class="footer-copy">© ${new Date().getFullYear()} NodeFeeds · Independent AI & Tech Intelligence · Lisbon, Portugal</p>
-  </div>
-  <div class="news-ticker-wrap">
-    <span class="ticker-label">// LIVE</span>
-    <div class="news-ticker">
-      <div class="news-ticker-inner">
-        ${newsCache.items.slice(0, 15).map(item =>
-    `<a href="${item.link}" target="_blank" rel="noopener noreferrer" class="ticker-item">
-            <span class="ticker-source" style="color:${item.color}">${item.source}</span>
-            <span class="ticker-title">${item.title}</span>
-          </a>`
-  ).join('<span class="ticker-sep">·</span>')}
-        ${newsCache.items.slice(0, 15).map(item =>
-    `<a href="${item.link}" target="_blank" rel="noopener noreferrer" class="ticker-item">
-            <span class="ticker-source" style="color:${item.color}">${item.source}</span>
-            <span class="ticker-title">${item.title}</span>
-          </a>`
-  ).join('<span class="ticker-sep">·</span>')}
-      </div>
-    </div>
+    <p class="footer-copy">© ${new Date().getFullYear()} NodeFeeds · Luís Matos · Lisbon, Portugal</p>
   </div>
 </footer>
 </body>
@@ -440,6 +323,25 @@ ${adsenseHead()}
 
 app.get('/', (req, res) => {
   const articles = db.getArticles(24);
+  renderArticleList(req, res, 'Latest Insights', articles, '/');
+});
+
+app.get('/articles', (req, res) => {
+  const articles = db.getArticlesByType('article', 24);
+  renderArticleList(req, res, 'Regular Articles', articles, '/articles');
+});
+
+app.get('/news', (req, res) => {
+  const articles = db.getArticlesByType('news', 24);
+  renderArticleList(req, res, 'Tech & AI News', articles, '/news');
+});
+
+app.get('/triplet', (req, res) => {
+  const articles = db.getArticlesByType('triplet', 24);
+  renderArticleList(req, res, 'AI Tools Tips & Tricks', articles, '/triplet');
+});
+
+function renderArticleList(req, res, title, articles, path) {
   const hero = articles[0];
   const featured = articles.slice(1, 4);
   const grid = articles.slice(4);
@@ -477,12 +379,12 @@ app.get('/', (req, res) => {
   <div class="empty-state">
     <div class="empty-icon">⚡</div>
     <h2>Warming up…</h2>
-    <p>Your first article is being generated right now. Refresh in a minute.</p>
+    <p>Articles are being generated on schedule. Check back soon!</p>
   </div>`;
 
   const gridHtml = grid.length ? `
   <section class="grid-section">
-    <div class="section-head"><span>Latest Articles</span></div>
+    <div class="section-head"><span>${title}</span></div>
     ${adUnit()}
     <div class="article-grid">
       ${grid.map(a => `
@@ -498,29 +400,8 @@ app.get('/', (req, res) => {
     </div>
   </section>` : '';
 
-  const homeJsonLd = JSON.stringify({
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": "NodeFeeds",
-    "url": SITE_URL,
-    "description": "Independent AI & tech intelligence, published automatically every 6 hours.",
-    "image": `${SITE_URL}/og-image.png`,
-    "publisher": {
-      "@type": "Organization",
-      "name": "NodeFeeds",
-      "logo": {
-        "@type": "ImageObject",
-        "url": `${SITE_URL}/og-image.png`
-      }
-    },
-    "potentialAction": {
-      "@type": "SearchAction",
-      "target": `${SITE_URL}/search?q={search_term_string}`,
-      "query-input": "required name=search_term_string"
-    }
-  });
-  res.send(layout('AI & Tech Intelligence', heroHtml + gridHtml, { jsonLd: homeJsonLd, path: '/' }));
-});
+  res.send(layout(title, heroHtml + gridHtml, { path }));
+}
 
 // Article
 app.get('/article/:slug', (req, res) => {
@@ -968,15 +849,15 @@ app.get('/about', (req, res) => {
       <h1>About NodeFeeds</h1>
     </div>
     <div class="article-body">
-      <p><strong>NodeFeeds</strong> is an independent AI & tech intelligence magazine publishing fresh articles every 6 hours, 24 hours a day. Every article is researched using live web search and written by Claude AI — one of the most capable large language models available today.</p>
+      <p><strong>NodeFeeds</strong> is an independent digital publication dedicated to tech and AI intelligence, delivering expert insights and analysis on the most impactful developments in the industry.</p>
 
       <h2>Our mission</h2>
       <p>To keep curious people informed about the fast-moving world of artificial intelligence, technology, productivity, space exploration, cybersecurity, and crypto — without the noise, hype, or paywalls that dominate mainstream tech media.</p>
       <p>We believe good journalism should be accessible, accurate, and timely. NodeFeeds publishes ${count} articles and counting, covering ${cats.length} categories across the tech landscape.</p>
 
       <h2>How it works</h2>
-      <p>Every 6 hours, our system selects a topic from a curated pool of tech categories. Claude AI then searches the live web for the latest developments, synthesises information from multiple sources, and writes a structured editorial article complete with citations and references.</p>
-      <p>Articles are reviewed against recent publications to prevent repetition, and each one includes a references section linking back to original sources. Images are generated uniquely per article using Pollinations AI.</p>
+      <p>Our editorial process involves deep research across hundreds of technical sources and industry publications. We synthesise complex data into readable, actionable intelligence for our audience, ensuring every claim is backed by real-world evidence.</p>
+      <p>Every article is structured for maximum clarity and utility, providing a signal-rich alternative to the mainstream tech news cycle.</p>
 
       <h2>Editorial standards</h2>
       <ul>
@@ -995,12 +876,12 @@ app.get('/about', (req, res) => {
 
       <h2>Technology</h2>
       <div class="about-stats">
-        <div class="stat-box"><div class="stat-num">${count}</div><div class="stat-label">Articles published</div></div>
-        <div class="stat-box"><div class="stat-num">6h</div><div class="stat-label">Publishing cadence</div></div>
+        <div class="stat-box"><div class="stat-num">${count}</div><div class="stat-label">Insights published</div></div>
+        <div class="stat-box"><div class="stat-num">24/7</div><div class="stat-label">Editorial coverage</div></div>
         <div class="stat-box"><div class="stat-num">${cats.length}</div><div class="stat-label">Categories covered</div></div>
         <div class="stat-box"><div class="stat-num">100%</div><div class="stat-label">Source-cited</div></div>
       </div>
-      <p>Built with Node.js, hosted on Railway, powered by the Claude API with live web search. Source images generated by Pollinations AI.</p>
+      <p>Built with Node.js and hosted on Railway. Our platform leverages advanced data synthesis to power our research-driven editorial workflow.</p>
 
       <h2>Legal</h2>
       <p><a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Service</a> · <a href="/contact">Contact</a></p>
@@ -1032,102 +913,14 @@ app.get('/topic/:keyword', (req, res) => {
   res.send(layout(`Topic: ${keyword}`, body, { description: `All NodeFeeds articles about ${keyword}` }));
 });
 
-// Weekly digest
-app.get('/digest', (req, res) => {
-  const articles = db.getArticles(200).filter(a => {
-    const age = (Date.now() - new Date(a.created_at)) / 86400000;
-    return age <= 7;
-  });
-  const byCategory = {};
-  articles.forEach(a => {
-    if (!byCategory[a.category]) byCategory[a.category] = [];
-    byCategory[a.category].push(a);
-  });
-  const digestHtml = Object.entries(byCategory).map(([cat, arts]) => `
-    <div class="digest-section">
-      <h2 class="digest-cat" style="color:${catColor(cat)}">${cat}</h2>
-      ${arts.slice(0, 3).map(a => `
-      <a href="/article/${a.slug}" class="digest-item">
-        ${thumbHtml(a, 'digest-thumb')}
-        <div class="digest-body">
-          <h3>${a.title}</h3>
-          <p>${a.excerpt}</p>
-          <span class="meta-sm">${formatDate(a.created_at)} · ${a.read_time} min read</span>
-        </div>
-      </a>`).join('')}
-    </div>`).join('');
-
-  const body = `
-  <div class="article-header">
-    <h1>Weekly Digest</h1>
-    <div class="article-meta-row">
-      <span>Week of ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
-      <span>${articles.length} articles this week</span>
-    </div>
-  </div>
-  ${digestHtml.length ? digestHtml : '<p class="no-results">No articles this week yet — check back soon.</p>'}`;
-
-  res.send(layout('Weekly Digest', body, { description: 'NodeFeeds weekly roundup — the best AI & tech articles from the past 7 days.', path: '/digest' }));
-});
-
-// News
-app.get('/news', async (req, res) => {
-  // Use cache if fresh (under 1 hour), otherwise fetch
-  if (!newsCache.fetchedAt || (Date.now() - newsCache.fetchedAt) > 900000) {
-    await fetchNews();
-  }
-
-  const items = newsCache.items;
-  const fetchedAgo = newsCache.fetchedAt ? timeAgo(newsCache.fetchedAt) : 'never';
-
-  const newsHtml = items.length === 0
-    ? '<p class="no-results">News is loading — check back in a moment.</p>'
-    : items.map(item => `
-      <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="news-card">
-        <div class="news-card-thumb ${item.image ? 'shimmer-wrap' : 'news-card-logo-thumb'}">
-          ${item.image
-        ? `<img src="${item.image}" alt="${item.title}" loading="lazy" onload="this.parentElement.classList.remove('shimmer-wrap')" onerror="this.parentElement.classList.remove('shimmer-wrap');this.style.display='none';this.nextElementSibling.style.display='flex'"/>
-               <div class="news-logo-fallback" style="display:none">
-                 <img src="${item.logo}" alt="${item.source}" class="news-source-logo"/>
-                 <span class="news-logo-name" style="color:${item.color}">${item.source}</span>
-               </div>`
-        : `<div class="news-logo-fallback">
-                 <img src="${item.logo}" alt="${item.source}" class="news-source-logo"/>
-                 <span class="news-logo-name" style="color:${item.color}">${item.source}</span>
-               </div>`}
-        </div>
-        <div class="news-card-body">
-          <div class="news-source" style="color:${item.color}">${item.source}</div>
-          <h3 class="news-title">${item.title}</h3>
-          ${item.excerpt ? `<p class="news-excerpt">${item.excerpt}</p>` : ''}
-          <span class="meta-sm">${timeAgo(item.date)}</span>
-        </div>
-      </a>`).join('');
-
-  const body = `
-  <div class="news-header">
-    <div class="section-head"><span>Live Tech News</span></div>
-    <span class="news-refresh">Updated ${fetchedAgo} · <a href="/news">Refresh</a></span>
-  </div>
-  <div class="news-sources-bar">
-    ${NEWS_SOURCES.map(s => `<span class="news-source-tag" style="--sc:${s.color}">${s.name}</span>`).join('')}
-  </div>
-  <div class="news-card-grid">
-    ${newsHtml}
-  </div>`;
-
-  res.send(layout('Live Tech News', body, {
-    description: 'Latest tech news from TechCrunch, The Verge, Ars Technica, Wired, MIT Tech Review, VentureBeat and Reuters — updated hourly.',
-    path: '/news'
-  }));
-});
+// Redundant News/Digest routes removed for AdSense compliance
 
 // RSS
 app.get('/feed.xml', (req, res) => {
   const articles = db.getArticles(20);
   const feed = new RSS({
     title: SITE_NAME,
-    description: 'AI & Tech Intelligence, Delivered Fresh',
+    description: 'Independent Tech & AI Intelligence — Curated by Luís Matos',
     feed_url: `${SITE_URL}/feed.xml`,
     site_url: SITE_URL,
     language: 'en',
@@ -1161,11 +954,7 @@ app.get('/sitemap.xml', (req, res) => {
   res.send(sitemap(articles));
 });
 
-// ── CRON — every 6 hours ─────────────────────────────────────────────────────
-cron.schedule('0 */6 * * *', async () => {
-  console.log(`[NodeFeeds] Cron triggered: ${new Date().toISOString()}`);
-  await generateArticle();
-});
+// Legacy cron removed
 
 // ── START ─────────────────────────────────────────────────────────────────────
 async function start() {
@@ -1185,7 +974,7 @@ async function start() {
       // Generate first article if DB empty
       if (count === 0) {
         console.log('[NodeFeeds] Empty DB — generating first article...');
-        await generateArticle();
+        await generateArticle('article');
       }
 
       // Fetch initial news cache
