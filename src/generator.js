@@ -316,10 +316,12 @@ async function generateArticle(type = 'article') {
 }
 
 if (require.main === module) {
-  await db.init();
-  const r = await generateArticle();
-  console.log('Result:', r);
-  process.exit(0);
+  (async () => {
+    await db.init();
+    const r = await generateArticle();
+    console.log('Result:', r);
+    process.exit(0);
+  })();
 }
 
 module.exports = { generateArticle };
