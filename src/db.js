@@ -105,7 +105,7 @@ module.exports = {
   init: getDb,
 
   getArticles(limit = 20, offset = 0) {
-    return queryAll('SELECT *, (SELECT COALESCE(SUM(count), 0) FROM reactions WHERE slug = articles.slug) as total_reactions FROM articles WHERE created_at <= datetime(\'now\') ORDER BY created_at DESC LIMIT ? OFFSET ?', [limit, offset]);
+    return queryAll('SELECT *, (SELECT COALESCE(SUM(count), 0) FROM reactions WHERE slug = articles.slug) as total_reactions FROM articles WHERE created_at <= datetime(\'now\') AND type != \'news\' ORDER BY created_at DESC LIMIT ? OFFSET ?', [limit, offset]);
   },
   getArticle(slug) {
     return queryOne('SELECT * FROM articles WHERE slug = ?', [slug]);

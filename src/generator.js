@@ -154,6 +154,8 @@ Your writing is clear, insightful, genuinely useful, and engaging. You avoid hyp
 You MUST use web_search to find real, current information before writing.
 Today's date is ${today}.
 Write for a smart, busy audience who wants signal not noise.
+CRITICAL: Every factual claim MUST have a source. Use inline citations like [[1]](#ref1).
+CRITICAL: Every article MUST end with a "Sources & References" section listing the full URLs.
 CRITICAL: Your final response MUST be a single valid JSON (object or array) and nothing else.`;
 
   let user = '';
@@ -163,7 +165,9 @@ Produce 12 individual, distinct news articles.
 For each article:
 - Provide a catchy, professional title.
 - Provide a concise summary (excerpt).
-- In the content: clearly state any contradicting information from different sources if found, display sources [[1]](#ref1), and give your professional Lisbon-journalist opinion.
+- In the content: clearly state any contradicting information from different sources if found.
+- CRITICAL: Each news item MUST include its own "Sources" section at the end of its content with 1-3 direct URLs used for that specific story.
+- Use your professional Lisbon-journalist opinion to add value.
 
 Return ONLY a valid JSON ARRAY of exactly 12 objects:
 [
@@ -191,13 +195,35 @@ Return ONLY valid JSON:
   "tweet_text": "Master AI with today's Triple T's: [Hook]",
   "hashtags": "AITools Productivity Tips"
 }`;
+  } else if (type === 'digest') {
+    const newsSummary = chosenTopic; // In this case, chosenTopic is the aggregated news content
+    user = `You are preparing the "NodeFeeds 12-Hour Daily News Digest".
+Below are the titles and summaries of the 12 most important tech stories from the last 12 hours:
+${newsSummary}
+
+Your task:
+1. Write a cohesive, high-level narrative article that synthesizes these 12 stories into a "Tech State of the Union".
+2. Group related stories together (e.g., all AI model news in one section, all gadget news in another).
+3. Provide deep editorial insight into what these combined developments mean for the future.
+4. CRITICAL: Consolidate ALL sources from the individual stories into a master "Complete Sources & Further Reading" section at the very end.
+
+Return ONLY valid JSON:
+{
+  "title": "Daily Pulse: [Catchy Hook for today's news]",
+  "category": "News Digest",
+  "excerpt": "The last 12 hours in tech: [Summary of the synth]",
+  "content": "Full synthesis article in markdown...",
+  "tweet_text": "The Daily Pulse is live: [Hook]",
+  "hashtags": "TechNews AINews Digest"
+}`;
   } else {
     user = `Search the web for the latest news and developments about: "${chosenTopic}"
 IMPORTANT: These topics have been covered recently — do NOT repeat them:
 ${recentTitles || '(none yet)'}
 
 Find a fresh, specific angle. Then write a complete SEO-optimised magazine article for NodeFeeds.
-Include real data, quotes, and inline citations [[1]](#ref1).
+Include real data, quotes, and mandatory inline citations [[1]](#ref1).
+You MUST include a "Sources & References" section at the end.
 
 Return ONLY valid JSON:
 {
@@ -246,6 +272,8 @@ async function processAndSaveArticle(article, index, type, category) {
     image = { url: '/images/sections/news.png', thumb: '/images/sections/news.png', alt: 'NodeFeeds Daily News' };
   } else if (type === 'triplet') {
     image = { url: '/images/sections/triplet.png', thumb: '/images/sections/triplet.png', alt: 'AI Triple T\'s' };
+  } else if (category === 'News Digest') {
+    image = { url: '/images/sections/digest.png', thumb: '/images/sections/digest.png', alt: 'NodeFeeds Daily News Digest' };
   } else {
     console.log(`[NodeFeeds] Generating image for ${type} (${index + 1})...`);
     image = await generateAndSaveImage(slug, article.title, article.category);
@@ -304,6 +332,19 @@ async function generateArticle(type = 'article') {
     for (let i = 0; i < sourceArticles.length; i++) {
         const result = await processAndSaveArticle(sourceArticles[i], i, type, category);
         if (result) finalResults.push(result);
+    }
+
+    // NEW: If news, generate the Digest (13th item)
+    if (type === 'news' && sourceArticles.length >= 10) {
+      console.log(`[NodeFeeds] Generating 12-hour News Digest...`);
+      const newsContext = sourceArticles.map((a, idx) => `${idx + 1}. ${a.title}\n${a.excerpt}\n${a.content}\n`).join('\n---\n');
+      
+      const digestPrompts = getPrompts('digest', newsContext, 'News Digest', recentArticles);
+      const digestResult = await fetchAIResponse(digestPrompts.system, digestPrompts.user);
+      
+      // Schedule for the 12th hour (11h offset)
+      await processAndSaveArticle(digestResult, 11, 'article', 'News Digest');
+      finalResults.push({ success: true, title: digestResult.title, slug: 'digest' });
     }
 
     return finalResults.length > 0

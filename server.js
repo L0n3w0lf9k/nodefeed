@@ -124,7 +124,8 @@ function catColor(cat) {
     'AI Tools': '#00c882', 'Productivity': '#5b8af5', 'Gadgets': '#f5a623',
     'Automation': '#c882f5', 'AI News': '#00e0a0', 'Future of Work': '#5bf5c0',
     'Developer Tools': '#f55b5b', 'Tech Reviews': '#f5e05b',
-    'Space Tech': '#a78bfa', 'Cybersecurity': '#fb7185', 'Crypto & Web3': '#fbbf24'
+    'Space Tech': '#a78bfa', 'Cybersecurity': '#fb7185', 'Crypto & Web3': '#fbbf24',
+    'News Digest': '#f43f5e'
   };
   return m[cat] || '#00c882';
 }
@@ -133,6 +134,7 @@ function thumbHtml(article, cls = 'card-thumb') {
   let url = article.image_url;
   if (article.type === 'news') url = '/images/sections/news.png';
   if (article.type === 'triplet') url = '/images/sections/triplet.png';
+  if (article.category === 'News Digest') url = '/images/sections/digest.png';
 
   if (url) {
     return `<div class="${cls} shimmer-wrap"><img src="${url}" alt="${article.image_alt || article.title}" loading="lazy" onload="this.parentElement.classList.remove('shimmer-wrap')" onerror="this.style.display='none';this.parentElement.classList.add('thumb-placeholder');this.parentElement.classList.remove('shimmer-wrap')"/></div>`;
