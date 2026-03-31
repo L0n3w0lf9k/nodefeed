@@ -81,6 +81,24 @@ const TOPICS = [
   'stablecoin CBDC and digital currency policy news',
 ];
 
+const TRIPLET_TOPICS = [
+  'AI 3D Modeling and Rendering',
+  'AI Music and Audio Production',
+  'AI Video Generation and Editing',
+  'AI Programming and Auto-coding agents',
+  'Vibe Coding and Natural Language Development',
+  'AI-enhanced Productivity and Knowledge Management',
+  'AI for Design and Creative Visuals',
+  'AI for Content Creation and Storytelling',
+  'AI for Personal Finance and Investment Analysis',
+  'AI for Health, Wellness, and Longevity',
+  'AI for Science and Research',
+  'AI for Automation and No-Code Workflows',
+  'AI for Cybersecurity and Privacy',
+  'AI for Language Learning and Translation',
+  'AI for Social Media Management and Growth'
+];
+
 function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 function estimateReadTime(text) { return Math.max(3, Math.round(text.split(/\s+/).length / 200)); }
 
@@ -119,18 +137,20 @@ function isTooSimilar(candidateText, recentArticles, threshold = 0.45) {
   return false;
 }
 
+function pickUniqueTopic(topics, recentArticles) {
+    const shuffled = [...topics].sort(() => Math.random() - 0.5);
+    for (const topic of shuffled) {
+      if (!isTooSimilar(topic, recentArticles)) return topic;
+    }
+    return null;
+}
+
 function getTopicAndCategory(type, recentArticles) {
   let chosenTopic = null;
   let category = pickRandom(CATEGORIES);
 
   if (type === 'article') {
-    const shuffledTopics = [...TOPICS].sort(() => Math.random() - 0.5);
-    for (const topic of shuffledTopics) {
-      if (!isTooSimilar(topic, recentArticles)) {
-        chosenTopic = topic;
-        break;
-      }
-    }
+    chosenTopic = pickUniqueTopic(TOPICS, recentArticles);
     if (!chosenTopic) {
       console.log('[NodeFeeds] All preset topics too similar — generating a novel topic...');
       chosenTopic = 'an emerging or niche AI or tech story that has not been widely covered this month';
@@ -139,7 +159,7 @@ function getTopicAndCategory(type, recentArticles) {
     chosenTopic = 'the 12 most notorious, relevant, and impactful tech/AI news stories from the last 24 hours';
     category = 'AI News';
   } else if (type === 'triplet') {
-    chosenTopic = 'highly useful AI tools, tips, and tricks for productivity, creativity, or development';
+    chosenTopic = pickUniqueTopic(TRIPLET_TOPICS, recentArticles) || pickRandom(TRIPLET_TOPICS);
     category = 'AI Tools';
   }
   return { chosenTopic, category };
@@ -182,18 +202,25 @@ Return ONLY a valid JSON ARRAY of exactly 12 objects:
   ...
 ]`;
   } else if (type === 'triplet') {
-    user = `Search for the most widely used or trending AI tools and generate a "Triple T" (Tools, Tips & Tricks) article.
-Focus on how to use them better or for specific uses (e.g., "10 best use cases for X", "5 best tools to generate Y").
-Provide actionable, high-value advice that users can apply immediately.
+    user = `Search the web for new, trending, or widely used AI tools and techniques related to: "${chosenTopic}".
+Your goal is to generate a "Triple T" (Tools, Tips & Tricks) article that offers immediate value.
+
+For the chosen topic "${chosenTopic}":
+1. Find 3-5 relevant tools (mix of new/emerging and established/popular).
+2. For each tool, provide a short analysis of its unique value proposition.
+3. Share 2-3 specific "Pro Tips" or "Tricks" for using these tools effectively for specific use cases.
+4. Provide 1-2 actionable use cases that a user can try right now.
+
+The article should be insightful and move beyond surface-level descriptions.
 
 Return ONLY valid JSON:
 {
-  "title": "AI Triple T's: [Specific Tool/Topic] Tips & Tricks",
+  "title": "AI Triple T's: ${chosenTopic} Mastering Tips",
   "category": "AI Tools",
-  "excerpt": "Maximize your AI output with these expert tips and tricks for [Topic].",
-  "content": "Full article in markdown...",
-  "tweet_text": "Master AI with today's Triple T's: [Hook]",
-  "hashtags": "AITools Productivity Tips"
+  "excerpt": "Discover new tools and master ${chosenTopic} with these expert tips and tricks.",
+  "content": "Full article in markdown with specific tool names, analysis, use cases, and tips...",
+  "tweet_text": "Master ${chosenTopic} with today's NodeFeeds Triple T's! #AI #TechTips",
+  "hashtags": "AITools TripleT TechTips ${chosenTopic.replaceAll(' ', '')}"
 }`;
   } else if (type === 'digest') {
     const newsSummary = chosenTopic; // In this case, chosenTopic is the aggregated news content
@@ -205,13 +232,15 @@ Your task:
 1. Write a cohesive, high-level narrative article that synthesizes these 12 stories into a "Tech State of the Union".
 2. Group related stories together (e.g., all AI model news in one section, all gadget news in another).
 3. Provide deep editorial insight into what these combined developments mean for the future.
-4. CRITICAL: Consolidate ALL sources from the individual stories into a master "Complete Sources & Further Reading" section at the very end.
+4. CRITICAL: From the "Sources" section of EACH input story provided above, extract EVERY unique URL.
+5. CRITICAL: You MUST include a final section at the very end of your "content" entitled "## Complete Sources & Further Reading".
+6. In this section, list all unique URLs in a clean, numbered markdown list. Ensure EVERY study and tool mentioned in the synthesis is backed by a link.
 
 Return ONLY valid JSON:
 {
   "title": "Daily Pulse: [Catchy Hook for today's news]",
   "category": "News Digest",
-  "excerpt": "The last 12 hours in tech: [Summary of the synth]",
+  "excerpt": "The last 12 hours in tech: [Summary of the synthesis]",
   "content": "Full synthesis article in markdown...",
   "tweet_text": "The Daily Pulse is live: [Hook]",
   "hashtags": "TechNews AINews Digest"
